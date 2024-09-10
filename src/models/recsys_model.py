@@ -126,3 +126,44 @@ class NCF(nn.Module):
         reg_loss = (self.gmf_embedding_user.weight.norm(2).pow(2)+self.ncf_embedding_user.weight.norm(2).pow(2))/self.num_users
         loss += reg_loss
         return loss
+
+class FM(nn.Module):
+    def __init__(self, num_users, num_items, num_user_feats, num_item_feats, args):
+        super().__init__()
+        self.x_emb = nn.Embedding(num_feats, emb_dim)
+        self.embedding_user = nn.Embedding(
+            num_embeddings=num_users, embedding_dim=args.n_factors)
+        self.embedding_item = nn.Embedding(
+            num_embeddings=num_items, embedding_dim=args.n_factors)
+        self.embedding_user_feats = nn.Embedding(
+            num_embeddings=num_user_feats, embedding_dim=args.n_factors)
+        self.embedding_item_feats = nn.Embedding(
+            num_embeddings=num_item_feats, embedding_dim=args.n_factors)
+        self.user_bias = nn.Parameter(torch.zeros(num_users))
+        self.item_bias = nn.Parameter(torch.zeros(num_items))
+        self.user_feat_bias = nn.Parameter(torch.zeros(num_user_feats))
+        self.item_feat_bias = nn.Parameter(torch.zeros(num_item_feats))
+        self.offset = nn.Parameter(torch.zeros(1))
+        self.args = args
+        self.num_users = num_users
+        self.num_items = num_items
+        self.num_user_feats = num_user_feats
+        self.num_item_feats = num_item_feats
+        self.max_norm = norm_dict["FM"]
+        nn.init.kaiming_normal_(self.x_emb.weight, mode='fan_out')
+
+    def forward(self, user_ids, item_ids, user_feat_ids, item_feat_ids, noise_std=0):
+        user_ids = user_ids.unsqueeze(dim=1) # (item_size, 1)
+        user_embs = self.embedding_user(user_ids) # (item_size, 1, emb_dim)
+        user_feat_embs = self.embedding_user_feats(user_feat_ids) # (item_size, num_feats, emb_dim)
+        item_ids = item_ids.unsqueeze(dim=1) # (item_size, 1)
+        item_embs = self.embedding_item(item_ids) # (item_size, emb_dim)
+        item_feat_embs = self.embedding_item_feats(item_feat_ids) # (item_size, num_feats, emb_dim)
+        all_embs = torch.cat([user_embs, item_embs, user_feat_embs, item_feat_embs], dim=1)
+        print(all_embs.shape)
+        pow_of_sum = all_embs.sum(dim=1).pow(2) # (item_size, emb_dim)
+        sum_of_pow = all_embs.pow(2).sum(dim=1) # (item_size, emb_dim)
+        fm_out = (pow_of_sum - sum_of_pow).sum(dim=-1)*0.5  # item_size
+        x_biases = (self.user_bias[user_ids]+self.item_bias[item_ids]+self.user_feat_bias[user_feat_ids]+self.item_feat_bias[item_feat_ids]).sum(1) # item_size
+        fm_out +=  x_biases + self.offset # item_size
+        return fm_out

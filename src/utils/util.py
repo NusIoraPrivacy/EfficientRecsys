@@ -61,3 +61,10 @@ def get_emb_size(base_model, args):
         if name in private_params:
             emb_dim += param.shape[-1]
     return emb_dim
+
+def get_model_size(model):
+    model_size = 0
+    for name, param in model.named_parameters():
+        if "embedding_user" not in name:
+            model_size += torch.numel(param)
+    return model_size

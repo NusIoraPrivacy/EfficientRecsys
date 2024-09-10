@@ -30,25 +30,6 @@ class ClientsDataset(Dataset):
         c_vec = self.c_vecs[idx]
         return users, items, ratings, rating_vec, c_vec
 
-# class DenoiseDataset(Dataset):
-#     def __init__(self, base_model, n_users, n_items, args):
-#         self.base_model = base_model
-#         self.args = args
-#         self.n_users = n_users
-#         self.n_items = n_items
-#         self.sensitivity = norm_dict[args.model]
-
-#     def __len__(self):
-#         return self.n_users
-
-#     def __getitem__(self, idx):
-#         user_ids = torch.tensor([idx] * self.n_items).to(self.args.device)
-#         item_ids = torch.tensor([i for i in range(self.n_items)]).to(self.args.device)
-#         sigma = get_noise_std(self.sensitivity, self.args)
-#         noise_predictions, noises, init_user_embs = self.base_model(user_ids, item_ids, noise_std=sigma)
-#         clean_predictions = self.base_model(user_ids, item_ids)
-#         return noise_predictions, noises[0], init_user_embs[0], clean_predictions
-
 class DenoiseDataset(Dataset):
     def __init__(self, data_dict, base_model, n_users, n_items, args, max_item=150):
         self.base_model = base_model

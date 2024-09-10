@@ -42,7 +42,7 @@ def get_args():
     parser.add_argument("--d_batch_size", type=int, default=100, 
                         help = "batch size for denoise model")
     parser.add_argument("--model", type=str, default="MF", 
-                        choices=["MF", "NCF"],
+                        choices=["MF", "NCF", "FM"],
                         help = "model for recommender system")
     parser.add_argument("--als", action="store_true")
     parser.add_argument("--epsilon", type=float, default=1, 

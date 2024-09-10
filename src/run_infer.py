@@ -1,5 +1,5 @@
 from utils.parameters import get_args
-from utils.util import get_emb_size
+from utils.util import get_emb_size, get_model_size
 from data.data_util import load_data, get_rating_list, train_test_split
 from data.dataset import *
 from train.train_denoise import *
@@ -19,6 +19,7 @@ if __name__ == "__main__":
 
     # # read recsys model
     base_model = eval(args.model)(len(user_id_list), len(item_id_list), args)
+    print("Base model size:", get_model_size(base_model))
     model_path = f"{args.root_path}/model/{args.dataset}/{args.model}/recsys_best"
     base_model.load_state_dict(torch.load(model_path))
     base_model = base_model.to(args.device)
@@ -53,5 +54,5 @@ if __name__ == "__main__":
     emb_dim = get_emb_size(base_model, args)
     denoise_model = eval(f"{args.model}_d")(n_users, n_items, emb_dim, args)
     denoise_model = denoise_model.to(args.device)
-
+    print("Denoise model size:", get_model_size(denoise_model))
     train_demod(user_id_list, item_id_list, train_loader, test_loader, base_model, denoise_model, args)
