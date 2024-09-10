@@ -3,6 +3,7 @@ from torch.utils.data import Dataset
 import scipy.sparse as sp
 import numpy as np
 from utils.globals import *
+from utils.util import get_noise_std
 
 class ClientsDataset(Dataset):
     def __init__(self, data_dict, n_items, n_users, args):
@@ -29,21 +30,49 @@ class ClientsDataset(Dataset):
         c_vec = self.c_vecs[idx]
         return users, items, ratings, rating_vec, c_vec
 
+# class DenoiseDataset(Dataset):
+#     def __init__(self, base_model, n_users, n_items, args):
+#         self.base_model = base_model
+#         self.args = args
+#         self.n_users = n_users
+#         self.n_items = n_items
+#         self.sensitivity = norm_dict[args.model]
+
+#     def __len__(self):
+#         return self.n_users
+
+#     def __getitem__(self, idx):
+#         user_ids = torch.tensor([idx] * self.n_items).to(self.args.device)
+#         item_ids = torch.tensor([i for i in range(self.n_items)]).to(self.args.device)
+#         sigma = get_noise_std(self.sensitivity, self.args)
+#         noise_predictions, noises, init_user_embs = self.base_model(user_ids, item_ids, noise_std=sigma)
+#         clean_predictions = self.base_model(user_ids, item_ids)
+#         return noise_predictions, noises[0], init_user_embs[0], clean_predictions
+
 class DenoiseDataset(Dataset):
-    def __init__(self, base_model, n_users, n_items, args):
+    def __init__(self, data_dict, base_model, n_users, n_items, args, max_item=150):
         self.base_model = base_model
+        self.data_dict = data_dict
         self.args = args
         self.n_users = n_users
         self.n_items = n_items
+        self.max_item = max_item
         self.sensitivity = norm_dict[args.model]
 
     def __len__(self):
-        return self.n_users
+        return len(self.data_dict)
 
     def __getitem__(self, idx):
-        user_ids = torch.tensor([idx] * self.n_items).to(self.args.device)
-        item_ids = torch.tensor([i for i in range(self.n_items)]).to(self.args.device)
-        sigma = np.sqrt(2 * np.log(1.25 / self.args.delta)) * self.sensitivity / self.args.epsilon
+        # prepare ids and ratings
+        user_rating_list = self.data_dict[idx]
+        user_ids = torch.tensor([idx] * self.max_item).to(self.args.device)
+        item_ids = [rate[0] for rate in user_rating_list][:self.max_item] + [-1] * (self.max_item-len(user_rating_list))
+        item_ids = torch.tensor(item_ids).to(self.args.device)
+        masks = (item_ids >= 0).float()
+        item_ids[item_ids==-1] = 0
+        ratings = [rate[1] for rate in user_rating_list][:self.max_item] + [0] * (self.max_item-len(user_rating_list))
+        ratings = torch.tensor(ratings).to(self.args.device)
+
+        sigma = get_noise_std(self.sensitivity, self.args)
         noise_predictions, noises, init_user_embs = self.base_model(user_ids, item_ids, noise_std=sigma)
-        clean_predictions = self.base_model(user_ids, item_ids)
-        return noise_predictions, noises[0], init_user_embs[0], clean_predictions
+        return noise_predictions, noises[0], init_user_embs[0], item_ids, ratings, masks

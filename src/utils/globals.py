@@ -1,5 +1,5 @@
 
-norm_dict = {"MF": 9, "NCF": (6, 6)}
+norm_dict = {"MF": 9, "NCF": (3.5, 2.8)}
 
 distribution_dict = {"MF": (0.3, 1.5), "NCF": (0.01, 1.2)}
 

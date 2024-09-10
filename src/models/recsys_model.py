@@ -115,9 +115,9 @@ class NCF(nn.Module):
         h = torch.cat([gmf_h, ncf_h], 1)
         predictions = self.output_layer(h)
         predictions = predictions.squeeze(dim=-1)
-        noises = torch.cat([gmf_noise, ncf_noise], dim=-1)
-        init_users_emb = torch.cat([init_gmf_users_emb, init_ncf_users_emb], dim=-1)
         if noise_std > 0:
+            noises = torch.cat([gmf_noise, ncf_noise], dim=-1)
+            init_users_emb = torch.cat([init_gmf_users_emb, init_ncf_users_emb], dim=-1)
             return predictions, noises, init_users_emb
         return predictions
 

@@ -1,5 +1,6 @@
 import torch
 from utils.globals import *
+import numpy as np
 
 def str2bool(v):
     """Util function for user friendly boolean flag args"""
@@ -41,3 +42,22 @@ def _evaluate_one_rating(predictions, rates, nagative_items, args):
     precision = len(correct_pred) / args.topk
     recall = len(correct_pred) / len(rates)
     return precision, recall
+
+def get_noise_std(sensitivities, args):
+    if isinstance(sensitivities, tuple):
+        sensitivity = 0
+        for s in sensitivities:
+            sensitivity += s ** 2
+        sensitivity = np.sqrt(sensitivity)
+    else:
+        sensitivity = sensitivities
+    sigma = np.sqrt(2 * np.log(1.25 / args.delta)) * sensitivity / args.epsilon
+    return sigma
+
+def get_emb_size(base_model, args):
+    private_params = private_param_dict[args.model]
+    emb_dim = 0
+    for name, param in base_model.named_parameters():
+        if name in private_params:
+            emb_dim += param.shape[-1]
+    return emb_dim

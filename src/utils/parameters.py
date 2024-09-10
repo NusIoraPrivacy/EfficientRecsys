@@ -31,13 +31,13 @@ def get_args():
                         help = "number of topk recommendations")
     parser.add_argument("--lr", type=float, default=0.05, 
                         help = "learning rate for recsys")
-    parser.add_argument("--d_lr", type=float, default=0.01, 
+    parser.add_argument("--d_lr", type=float, default=0.05, 
                         help = "learning rate for denoise model")
     parser.add_argument("--n_select", type=int, default=600, 
                         help = "number of selected client per iteration")
     parser.add_argument("--iters", type=int, default=2000, 
                         help = "number of iterations")
-    parser.add_argument("--d_epochs", type=int, default=1000, 
+    parser.add_argument("--d_epochs", type=int, default=50, 
                         help = "number of epochs for denoise model")
     parser.add_argument("--d_batch_size", type=int, default=100, 
                         help = "batch size for denoise model")
