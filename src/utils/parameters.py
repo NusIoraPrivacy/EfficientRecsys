@@ -44,7 +44,7 @@ def get_args():
     parser.add_argument("--max_items", type=int, default=150, 
                         help = "maximum number of sampled items per user in a denoise model")
     parser.add_argument("--model", type=str, default="MF", 
-                        choices=["MF", "NCF", "FM"],
+                        choices=["MF", "NCF", "FM", "DeepFM"],
                         help = "model for recommender system")
     parser.add_argument("--als", action="store_true")
     parser.add_argument("--epsilon", type=float, default=1, 

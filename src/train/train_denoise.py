@@ -14,9 +14,9 @@ def test_model(model, test_loader, args, denoise=False, denoise_model=None):
     sensitivities = norm_dict[args.model]
     # testing
     for batch in test_loader:
-        predictions, noises, init_user_embs, item_ids, ratings, masks = batch
+        predictions, noises, init_user_embs, item_ids, ratings, masks, item_feat = batch
         if denoise:
-            predictions = denoise_model(predictions, item_ids, noises, init_user_embs)
+            predictions = denoise_model(predictions, item_ids, noises, init_user_embs, item_feat=item_feat)
         for pred, rating, mask in zip(predictions, ratings, masks):
             pred = pred[mask>0]
             rating = rating[mask>0]
@@ -36,11 +36,11 @@ def train_demod(user_id_list, item_id_list, train_loader, test_loader, base_mode
     with tqdm(total=args.d_epochs * len(train_loader)) as pbar:
         for epoch in range(args.d_epochs):
             for batch in train_loader:
-                predictions, noises, init_user_embs, item_ids, ratings, masks = batch
+                predictions, noises, init_user_embs, item_ids, ratings, masks, item_feat = batch
                 # use the generated data to train model
                 # print(item_ids.shape)
                 # print(noises.shape)
-                denoise_predictions = denoise_model(predictions, item_ids, noises, init_user_embs)
+                denoise_predictions = denoise_model(predictions, item_ids, noises, init_user_embs, item_feat=item_feat)
                 loss = denoise_model.get_loss(denoise_predictions, ratings, masks)
                 loss.backward()
                 optimizer.step()

@@ -2,7 +2,7 @@ import torch
 from torch import nn
 
 class MF_d(nn.Module):
-    def __init__(self, num_users, num_items, emb_dim, args):
+    def __init__(self, num_users, num_items, emb_dim, args, **kwargs):
         super(MF_d, self).__init__()
         self.embedding_item = nn.Embedding(
             num_embeddings=num_items, embedding_dim=4)
@@ -26,7 +26,7 @@ class MF_d(nn.Module):
             nn.init.kaiming_normal_(m.weight, mode='fan_out')
             nn.init.zeros_(m.bias)
     
-    def forward(self, ratings, item_ids, noise, init_user_emb):
+    def forward(self, ratings, item_ids, noise, init_user_emb, **kwargs):
         item_embs = self.embedding_item(item_ids) # (batch size, item size, reduce dim)
         noise = self.layer1(noise) # (batch size, reduce dim)
         user_emb = self.layer2(init_user_emb) # (batch size, reduce dim)
@@ -45,50 +45,8 @@ class MF_d(nn.Module):
         loss += reg_loss
         return loss
 
-# class NCF_d(nn.Module):
-#     def __init__(self, num_users, num_items, emb_dim, args):
-#         super(NCF_d, self).__init__()
-#         self.embedding_item = nn.Embedding(
-#             num_embeddings=num_items, embedding_dim=4)
-#         self.layer1 = nn.Sequential(
-#             nn.Linear(emb_dim, 4),
-#             )
-#         self.layer2 = nn.Sequential(
-#             nn.Linear(emb_dim, 4),
-#             )
-#         self.p = nn.Parameter(torch.tensor([1.0]))
-#         self.layer1.apply(self.init_layer)
-#         self.layer2.apply(self.init_layer)
-#         self.args = args
-#         self.num_users = num_users
-#         self.num_items = num_items
-    
-#     def init_layer(self, m):
-#         if isinstance(m, nn.Linear):
-#             nn.init.kaiming_normal_(m.weight, mode='fan_out')
-#             nn.init.zeros_(m.bias)
-
-#     def forward(self, ratings, item_ids, noise, init_user_emb):
-#         item_embs = self.embedding_item(item_ids) # (batch size, item size, reduce dim)
-#         noise = self.layer1(noise) # (batch size, reduce dim)
-#         user_emb = self.layer2(init_user_emb) # (batch size, reduce dim)
-#         noise = torch.einsum("ijk, ik->ij", item_embs, noise) # (batch size, item size)
-#         user_emb = torch.einsum("ijk, ik->ij", item_embs, user_emb) # (batch size, item size)
-#         denoise_output = self.p * ratings + noise + user_emb # (batch size, item size)
-#         return denoise_output
-
-#     def get_loss(self, true_preds, denoise_preds, mask=None):
-#         if mask is not None:
-#             loss = ((true_preds - denoise_preds) ** 2) * mask
-#             loss = loss.sum() / mask.sum()
-#         else:
-#             loss = torch.mean((true_preds - denoise_preds) ** 2)
-#         reg_loss = self.embedding_item.weight.norm(2).pow(2)/self.num_items
-#         loss += reg_loss
-#         return loss
-
 class NCF_d(nn.Module):
-    def __init__(self, num_users, num_items, emb_dim, args):
+    def __init__(self, num_users, num_items, emb_dim, args, **kwargs):
         super(NCF_d, self).__init__()
         self.gmf_embedding_item = nn.Embedding(
             num_embeddings=num_items, embedding_dim=4)
@@ -114,7 +72,7 @@ class NCF_d(nn.Module):
             nn.init.kaiming_normal_(m.weight, mode='fan_out')
             nn.init.zeros_(m.bias)
 
-    def forward(self, ratings, item_ids, noise, init_user_emb):
+    def forward(self, ratings, item_ids, noise, init_user_emb, **kwargs):
         gmf_item_embs = self.gmf_embedding_item(item_ids) # (batch size, item size, reduce dim)
         ncf_item_embs = self.ncf_embedding_item(item_ids) # (batch size, item size, reduce dim)
         init_gmf_user_emb, init_ncf_users_emb = torch.split(init_user_emb, self.emb_dim//2, dim=-1) # (batch size, reduce dim)
@@ -145,5 +103,68 @@ class NCF_d(nn.Module):
         else:
             loss = torch.mean((true_preds - denoise_preds) ** 2)
         reg_loss = (self.gmf_embedding_item.weight.norm(2).pow(2)+self.ncf_embedding_item.weight.norm(2).pow(2))/self.num_items
+        loss += reg_loss
+        return loss
+        
+        
+class FM_d(nn.Module):
+    def __init__(self, num_users, num_items, num_user_feats, num_item_feats, emb_dim, args):
+        super(FM_d, self).__init__()
+        self.embedding_item = nn.Embedding(
+            num_embeddings=num_items, embedding_dim=4)
+        self.embedding_item_feats = nn.Embedding(
+            num_embeddings=num_item_feats, embedding_dim=4)
+        self.lin_layers = nn.ModuleList([nn.Linear(emb_dim, 4) for i in range(4)])
+        self.p1 = nn.Parameter(torch.tensor([1.0]))
+        self.p2 = nn.Parameter(torch.tensor([0.0]))
+        self.p3 = nn.Parameter(torch.tensor([0.0]))
+        self.lin_layers.apply(self.init_layer)
+        self.args = args
+        self.num_users = num_users
+        self.num_items = num_items
+        self.num_user_feats = num_user_feats
+        self.num_item_feats = num_item_feats
+        self.emb_dim = emb_dim
+    
+    def init_layer(self, m):
+        if isinstance(m, nn.Linear):
+            nn.init.kaiming_normal_(m.weight, mode='fan_out')
+            nn.init.zeros_(m.bias)
+            
+    def forward(self, ratings, item_ids, noise, init_user_emb, item_feat):
+        item_size = item_ids.shape[-1]
+        # transform raw user embedding and noises
+        init_user_embs, init_user_feat_embs = torch.split(init_user_emb, [1, self.num_user_feats], dim=1) # batch size, num_feat, dim
+        user_emb_noises, user_feat_emb_noises = torch.split(noise, [1, self.num_user_feats], dim=1) # batch size, num_feat, dim
+        init_user_embs = self.lin_layers[0](init_user_embs)
+        init_user_feat_embs = self.lin_layers[1](init_user_feat_embs)
+        user_emb_noises = self.lin_layers[2](user_emb_noises)
+        user_feat_emb_noises = self.lin_layers[3](user_feat_emb_noises)
+        all_user_embs = torch.cat([init_user_embs, init_user_feat_embs], dim=1)  # batch size, num_feat, dim
+        all_noises = torch.cat([user_emb_noises, user_feat_emb_noises], dim=1)  # batch size, num_feat, dim
+        all_user_embs = all_user_embs.unsqueeze(1).repeat(1, item_size, 1, 1)  # batch size, item size num_feat, dim
+        all_noises = all_noises.unsqueeze(1).repeat(1, item_size, 1, 1) # batch size, item size, num_feat, dim
+        # obtain item embs
+        item_ids = item_ids.unsqueeze(-1)
+        item_embs = self.embedding_item(item_ids) # batch size, item size, 1, dim
+        item_feat_embs = torch.einsum("ij, bmi->bmij", self.embedding_item_feats.weight, item_feat) # batch size, item size, num_feat, dim
+        all_item_embs = torch.cat([item_embs, item_feat_embs], dim=2)
+        all_embs = torch.cat([all_user_embs, all_item_embs], dim=2)
+        pos_terms = all_embs.sum(2).pow(2)
+        neg_terms = all_embs.pow(2).sum(2)
+        denoise_output = (pos_terms - neg_terms).sum(-1)*0.5
+        all_noisy_embs = torch.cat([all_user_embs+all_noises, all_item_embs], dim=2)
+        pos_terms = all_noisy_embs.sum(2).pow(2)
+        neg_terms = all_noisy_embs.pow(2).sum(2)
+        denoise_output = self.p1 * denoise_output + self.p2 * ratings + self.p3 * (pos_terms-neg_terms).sum(-1)*0.5
+        return denoise_output
+
+    def get_loss(self, true_preds, denoise_preds, mask=None):
+        if mask is not None:
+            loss = ((true_preds - denoise_preds) ** 2) * mask
+            loss = loss.sum() / mask.sum()
+        else:
+            loss = torch.mean((true_preds - denoise_preds) ** 2)
+        reg_loss = (self.embedding_item.weight.norm(2).pow(2)+self.embedding_item_feats.weight.norm(2).pow(2))/self.num_items
         loss += reg_loss
         return loss

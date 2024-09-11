@@ -35,13 +35,15 @@ class ClientsDataset(Dataset):
         return users, items, ratings, rating_vec, c_vec, item_feat, user_feat
 
 class DenoiseDataset(Dataset):
-    def __init__(self, data_dict, base_model, n_users, n_items, args, max_item=150):
+    def __init__(self, data_dict, base_model, n_users, n_items, n_user_feat, n_item_feat, args, max_item=150):
         self.base_model = base_model
         self.data_dict = data_dict
         self.args = args
         self.n_users = n_users
         self.n_items = n_items
         self.max_item = max_item
+        self.n_user_feat = n_user_feat
+        self.n_item_feat = n_item_feat
         self.sensitivity = norm_dict[args.model]
 
     def __len__(self):
@@ -57,7 +59,10 @@ class DenoiseDataset(Dataset):
         item_ids[item_ids==-1] = 0
         ratings = [rate[1] for rate in user_rating_list][:self.max_item] + [0] * (self.max_item-len(user_rating_list))
         ratings = torch.tensor(ratings).to(self.args.device)
-
+        item_feat = [rate[2:(2+self.n_item_feat)] for rate in user_rating_list][:self.max_item] + [[0]*self.n_item_feat] * (self.max_item-len(user_rating_list))
+        item_feat = torch.tensor(item_feat).to(self.args.device) # (bs, item_size, feat num)
+        user_feat = [rate[(-self.n_user_feat):] for rate in user_rating_list][:self.max_item] + [[0]*self.n_user_feat] * (self.max_item-len(user_rating_list))
+        user_feat = torch.tensor(user_feat).to(self.args.device)
         sigma = get_noise_std(self.sensitivity, self.args)
-        noise_predictions, noises, init_user_embs = self.base_model(user_ids, item_ids, noise_std=sigma)
-        return noise_predictions, noises[0], init_user_embs[0], item_ids, ratings, masks
+        noise_predictions, noises, init_user_embs = self.base_model(user_ids, item_ids, user_feats=user_feat, item_feats=item_feat, noise_std=sigma)
+        return noise_predictions, noises[0], init_user_embs[0], item_ids, ratings, masks, item_feat
