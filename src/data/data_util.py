@@ -31,7 +31,11 @@ def get_rating_list(rating_df, args, item_id_list=None):
     ratings_dict = {e:[] for e in user_id_list}
     counter = 0
     for record in ratings:
-        ratings_dict[record[0]].append([int(record[1]), float(record[2])])
+        rating_feat_list = []
+        for r in record[1:]:
+            rating_feat_list.append(int(r))
+        ratings_dict[record[0]].append(tuple(rating_feat_list))
+        # ratings_dict[record[0]].append([int(record[1]), float(record[2])])
         counter += 1
     return ratings_dict
 

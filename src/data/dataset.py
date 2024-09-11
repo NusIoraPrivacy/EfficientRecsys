@@ -6,7 +6,7 @@ from utils.globals import *
 from utils.util import get_noise_std
 
 class ClientsDataset(Dataset):
-    def __init__(self, data_dict, n_items, n_users, args):
+    def __init__(self, data_dict, n_items, n_users, n_user_feat, n_item_feat, args):
         self.data_dict = data_dict
         self.args = args
         # get rating vector
@@ -17,6 +17,8 @@ class ClientsDataset(Dataset):
                 self.rating_vector[user_idx, item_idx] = rating
         self.c_vecs = 1 * (self.rating_vector > 0)
         self.rating_vector = sp.csr_matrix(self.rating_vector)
+        self.n_user_feat = n_user_feat
+        self.n_item_feat = n_item_feat
 
     def __len__(self):
         return len(self.data_dict)
@@ -28,7 +30,9 @@ class ClientsDataset(Dataset):
         ratings = torch.tensor([rate[1] for rate in user_rating_list]).to(self.args.device)
         rating_vec = self.rating_vector[idx]
         c_vec = self.c_vecs[idx]
-        return users, items, ratings, rating_vec, c_vec
+        item_feat = torch.tensor([rate[2:(2+self.n_item_feat)] for rate in user_rating_list]).to(self.args.device)
+        user_feat = torch.tensor([rate[(-self.n_user_feat):] for rate in user_rating_list]).to(self.args.device)
+        return users, items, ratings, rating_vec, c_vec, item_feat, user_feat
 
 class DenoiseDataset(Dataset):
     def __init__(self, data_dict, base_model, n_users, n_items, args, max_item=150):

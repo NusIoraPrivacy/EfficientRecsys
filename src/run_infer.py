@@ -21,17 +21,17 @@ if __name__ == "__main__":
     base_model = eval(args.model)(len(user_id_list), len(item_id_list), args)
     print("Base model size:", get_model_size(base_model))
     model_path = f"{args.root_path}/model/{args.dataset}/{args.model}/recsys_best"
-    base_model.load_state_dict(torch.load(model_path))
+    base_model.load_state_dict(torch.load(model_path, map_location=args.device))
     base_model = base_model.to(args.device)
     n_users = len(user_id_list)
     n_items = len(item_id_list)
-    train_dataset = DenoiseDataset(train_data, base_model, n_users, n_items, args)
+    train_dataset = DenoiseDataset(train_data, base_model, n_users, n_items, args, max_item=args.max_items)
     train_loader = DataLoader(
                 train_dataset, 
                 batch_size=args.d_batch_size, 
                 shuffle=True
                 )
-    test_dataset = DenoiseDataset(test_data, base_model, n_users, n_items, args)
+    test_dataset = DenoiseDataset(test_data, base_model, n_users, n_items, args, max_item=args.max_items)
     test_loader = DataLoader(
                 test_dataset, 
                 batch_size=args.d_batch_size, 

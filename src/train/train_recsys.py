@@ -18,8 +18,8 @@ def test_model(model, user_id_list, item_id_list, test_dataset, args):
     for i in range(len(user_id_list)):
         # user_id_tensor = torch.tensor([i] * len(item_id_list)).to(args.device)
         # item_id_tensor = torch.tensor(item_id_list).to(args.device)
-        this_users, this_items, true_rating, rating_vec, c_vec = test_dataset[i]
-        pred = model(this_users, this_items)
+        this_users, this_items, true_rating, rating_vec, c_vec, item_feat, user_feat = test_dataset[i]
+        pred = model(this_users, this_items, user_feats=user_feat, item_feats=item_feat)
         # obtain rmse
         real_label.extend(true_rating.tolist())
         prediction.extend(pred.tolist())
@@ -52,7 +52,8 @@ def train_fl_model(user_id_list, item_id_list, train_dataset, test_dataset, mode
             for i in this_user_list:
                 # obtain rating prediction
                 # print("embedding before update:", model.embedding_user.weight[i])
-                this_users, this_items, true_rating, rating_vec, c_vec = train_dataset[i]
+                this_users, this_items, true_rating, rating_vec, c_vec, item_feat, user_feat = train_dataset[i]
+                # print(this_users, this_items, true_rating, item_feat, user_feat)
                 # update user embedding
                 if args.model == "MF" and args.als:
                     c_matrix = sp.diags(c_vec) # (n_items, n_items)
@@ -88,7 +89,7 @@ def train_fl_model(user_id_list, item_id_list, train_dataset, test_dataset, mode
                     loss = torch.mean(errors ** 2)
                     loss_list.append(loss.item())
                 else:
-                    predictions = model(this_users, this_items)
+                    predictions = model(this_users, this_items, user_feats=user_feat, item_feats=item_feat)
                     # print(predictions.shape)
                     loss = model.get_loss(predictions, true_rating)
                     loss.backward()

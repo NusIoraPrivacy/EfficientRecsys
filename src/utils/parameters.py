@@ -41,6 +41,8 @@ def get_args():
                         help = "number of epochs for denoise model")
     parser.add_argument("--d_batch_size", type=int, default=100, 
                         help = "batch size for denoise model")
+    parser.add_argument("--max_items", type=int, default=150, 
+                        help = "maximum number of sampled items per user in a denoise model")
     parser.add_argument("--model", type=str, default="MF", 
                         choices=["MF", "NCF", "FM"],
                         help = "model for recommender system")
