@@ -4,6 +4,19 @@ import scipy.sparse as sp
 import numpy as np
 from utils.globals import *
 from utils.util import get_noise_std
+import copy
+import random
+
+class ClientsSampler(Dataset):
+    def __init__(self, n):
+        super().__init__()
+        self.users_seq = np.arange(n)
+
+    def __len__(self):
+        return len(self.users_seq)
+
+    def __getitem__(self, idx):
+        return self.users_seq[idx]
 
 class ClientsDataset(Dataset):
     def __init__(self, data_dict, n_items, n_users, n_user_feat, n_item_feat, args):
@@ -25,6 +38,9 @@ class ClientsDataset(Dataset):
 
     def __getitem__(self, idx):
         user_rating_list = self.data_dict[idx]
+        user_rating_list = copy.deepcopy(user_rating_list)
+        random.shuffle(user_rating_list)
+        user_rating_list = user_rating_list[:self.args.n_sample_items]
         users = torch.tensor([idx] * len(user_rating_list)).to(self.args.device)
         items = torch.tensor([rate[0] for rate in user_rating_list]).to(self.args.device)
         ratings = torch.tensor([rate[1] for rate in user_rating_list]).to(self.args.device)

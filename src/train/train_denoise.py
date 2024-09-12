@@ -33,6 +33,9 @@ def train_demod(user_id_list, item_id_list, train_loader, test_loader, base_mode
     best_rmse = 100
     best_model = copy.deepcopy(denoise_model)
     
+    n_rounds = 0
+    patience = args.early_stop
+    finish = False
     with tqdm(total=args.d_epochs * len(train_loader)) as pbar:
         for epoch in range(args.d_epochs):
             for batch in train_loader:
@@ -47,12 +50,20 @@ def train_demod(user_id_list, item_id_list, train_loader, test_loader, base_mode
                 optimizer.zero_grad()
 
                 # test the performance of denoise model
-                mse, rmse, mae = test_model(base_model, test_loader, args, denoise=True, denoise_model=denoise_model)
                 pbar.update(1)
+                if n_rounds % args.n_log_rounds == 0:
+                    mse, rmse, mae = test_model(base_model, test_loader, args, denoise=True, denoise_model=denoise_model)
+                    if rmse < best_rmse:
+                        best_rmse = rmse
+                        best_model = copy.deepcopy(denoise_model)
+                        patience = args.early_stop
+                    else:
+                        patience -= 1
+                        if patience == 0:
+                            finish = True
+                            break
                 pbar.set_postfix(loss=loss.item(), rmse=rmse, mse=mse, mae=mae)
-                if rmse < best_rmse:
-                    best_rmse = rmse
-                    best_model = copy.deepcopy(denoise_model)
+                n_rounds += 1
     print("Best rmse:", best_rmse)
     save_dir = f"{args.root_path}/model/{args.dataset}/{args.model}"
     if not os.path.exists(save_dir):

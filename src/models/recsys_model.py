@@ -223,15 +223,15 @@ class DeepFM(nn.Module):
         self.offset = nn.Parameter(torch.zeros(1))
         self.embed_output_dim = (2 + num_user_feats + num_item_feats) * args.n_factors
         self.mlp = nn.Sequential(
-            nn.Linear(self.embed_output_dim, args.n_factors//2),
-            nn.BatchNorm1d(args.n_factors//2),
+            nn.Linear(self.embed_output_dim, args.n_factors*4),
+            nn.BatchNorm1d(args.n_factors*4),
             nn.ReLU(),
             nn.Dropout(p=0.2),
-            nn.Linear(args.n_factors//2, args.n_factors//2),
-            nn.BatchNorm1d(args.n_factors//2),
+            nn.Linear(args.n_factors*4, args.n_factors*2),
+            nn.BatchNorm1d(args.n_factors*2),
             nn.ReLU(),
             nn.Dropout(p=0.2),
-            nn.Linear(args.n_factors//2, 1)
+            nn.Linear(args.n_factors*2, 1)
             )
         self.args = args
         self.num_users = num_users
@@ -245,10 +245,33 @@ class DeepFM(nn.Module):
         nn.init.kaiming_normal_(self.embedding_user_feats.weight, mode='fan_out')
         nn.init.kaiming_normal_(self.embedding_item_feats.weight, mode='fan_out')
 
+    def add_noise(self, users_emb, noise_std, max_norm, user_feat=False):
+        init_user_emb = copy.deepcopy(users_emb.data) # (item_size, n_features, dim)
+        if user_feat:
+            zero_embs = torch.sum(init_user_emb == 0, dim=-1)
+            zero_embs = zero_embs.unsqueeze(-1)
+        all_norms = torch.norm(users_emb, p=2, dim=-1)
+        users_emb = users_emb * torch.clamp(max_norm / all_norms, max=1).unsqueeze(-1)
+        if user_feat:
+            noise = torch.normal(mean=0., std=noise_std, size=users_emb.shape, device=users_emb.device)
+            noise = noise * zero_embs
+        else:
+            noise = torch.normal(mean=0., std=noise_std, size=(users_emb.shape[-1],), device=users_emb.device)
+            noise = noise.repeat(users_emb.shape[0], 1, 1)
+        users_emb += noise
+        all_norms = torch.norm(users_emb, p=2, dim=-1)
+        users_emb = users_emb * torch.clamp(max_norm / all_norms, max=1).unsqueeze(-1)
+        noise = users_emb - init_user_emb
+        return users_emb, noise, init_user_emb
+        
     def forward(self, user_ids, item_ids, user_feats, item_feats, noise_std=0):
         user_ids = user_ids.unsqueeze(dim=1) # (item_size, 1)
         user_embs = self.embedding_user(user_ids) # (item_size, 1, emb_dim)
+        if noise_std > 0:
+            user_embs, user_emb_noises, init_user_embs = self.add_noise(user_embs, noise_std, self.max_norm[0])
         user_feat_embs = torch.einsum("ij, ki->kij", self.embedding_user_feats.weight, user_feats) # (item_size, num_feats, emb_dim)
+        if noise_std > 0:
+            user_feat_embs, user_feat_emb_noises, init_user_feat_embs = self.add_noise(user_feat_embs, noise_std, self.max_norm[1]/np.sqrt(self.n_max_user_feat), user_feat=True)
         item_ids = item_ids.unsqueeze(dim=1) # (item_size, 1)
         item_embs = self.embedding_item(item_ids) # (item_size, 1, emb_dim)
         item_feat_embs = torch.einsum("ij, ki->kij", self.embedding_item_feats.weight, item_feats) # (item_size, num_feats, emb_dim)
@@ -262,6 +285,10 @@ class DeepFM(nn.Module):
         all_embs = all_embs.view(-1, self.embed_output_dim) # (item_size, num_feats*emb_dim)
         dnn_out = self.mlp(all_embs).squeeze(-1)
         predictions = fm_out + dnn_out
+        if noise_std > 0:
+            noises = torch.cat([user_emb_noises, user_feat_emb_noises], dim=1)
+            init_users_emb = torch.cat([init_user_embs, init_user_feat_embs], dim=1)
+            return predictions, noises, init_users_emb
         return predictions
 
     def get_loss(self, ratings, predictions):
