@@ -27,16 +27,18 @@ def test_model(model, test_loader, args, denoise=False, denoise_model=None):
 
 def train_demod(user_id_list, item_id_list, train_loader, test_loader, base_model, denoise_model, args):
     emb_dim = get_emb_size(base_model, args)
-
+    total_rounds = args.d_epochs * len(train_loader)
     item_size = len(item_id_list)
     optimizer = torch.optim.Adam(denoise_model.parameters(), lr=args.d_lr)
+    milestones = [total_rounds*i//5 for i in range(1, 5)]
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=milestones, gamma=0.5)
     best_rmse = 100
     best_model = copy.deepcopy(denoise_model)
     
     n_rounds = 0
     patience = args.early_stop
     finish = False
-    with tqdm(total=args.d_epochs * len(train_loader)) as pbar:
+    with tqdm(total=total_rounds) as pbar:
         for epoch in range(args.d_epochs):
             for batch in train_loader:
                 predictions, noises, init_user_embs, item_ids, ratings, masks, item_feat = batch
@@ -47,6 +49,7 @@ def train_demod(user_id_list, item_id_list, train_loader, test_loader, base_mode
                 loss = denoise_model.get_loss(denoise_predictions, ratings, masks)
                 loss.backward()
                 optimizer.step()
+                scheduler.step()
                 optimizer.zero_grad()
 
                 # test the performance of denoise model

@@ -33,12 +33,18 @@ def train_fl_model(user_id_list, item_id_list, train_dataset, test_dataset, mode
     model = model.to(args.device)
     n_items = len(item_id_list)
     n_users = len(user_id_list)
-    user_optimizers = [torch.optim.Adam(model.parameters(), betas=(0.9, 0.99), lr=args.lr) for i in range(len(user_id_list))]
+    uid_seq = DataLoader(ClientsSampler(n_users), batch_size=args.n_select, shuffle=True)
+    milestones = [args.epochs*i//5 for i in range(1, 5)]
+    user_optimizers = [torch.optim.Adam(model.parameters(), betas=(0.9, 0.99), lr=args.lr) for i in range(n_users)]
+    user_schedulers = [torch.optim.lr_scheduler.MultiStepLR(user_optimizers[i], milestones=milestones, gamma=0.5) for i in range(n_users)]
+    total_rounds = args.epochs*len(uid_seq)
+    milestones = [total_rounds*i//5 for i in range(1, 5)]
     server_optimizer = torch.optim.Adam(model.parameters(), betas=(0.9, 0.99), lr=args.lr)
+    server_scheduler = torch.optim.lr_scheduler.MultiStepLR(server_optimizer, milestones=milestones, gamma=0.5)
+
     best_rmse = 100
     best_model = copy.deepcopy(model)
     private_params = private_param_dict[args.model]
-    uid_seq = DataLoader(ClientsSampler(n_users), batch_size=args.n_select, shuffle=True)
     n_rounds = 0
     patience = args.early_stop
     finish = False
@@ -100,6 +106,7 @@ def train_fl_model(user_id_list, item_id_list, train_dataset, test_dataset, mode
                             if name in private_params:
                                 param.grad = private_grads[name]
                         user_optimizers[i].step()
+                        user_schedulers[i].step()
                     user_optimizers[i].zero_grad()
                     # print("embedding after update:", model.embedding_user.weight[i])
 
@@ -112,26 +119,26 @@ def train_fl_model(user_id_list, item_id_list, train_dataset, test_dataset, mode
                             public_agg[name] += 2 * param / len(param) # add regularization term
                         param.grad = public_agg[name]
                 server_optimizer.step()
+                server_scheduler.step()
                 server_optimizer.zero_grad()
-
+                torch.cuda.empty_cache()
                 # for computing loss
                 loss = np.mean(loss_list)
                 pbar.update(1)
-                if n_rounds % args.n_log_rounds == 0:
-                    mse, rmse, mae = test_model(model, user_id_list, item_id_list, test_dataset, args)
-                    if rmse < best_rmse:
-                        best_rmse = rmse
-                        best_model = copy.deepcopy(model)
-                        patience = args.early_stop
-                    else:
-                        patience -= 1
-                        if patience == 0:
-                            finish = True
-                            break
-                pbar.set_postfix(loss=loss, rmse=rmse, mse=mse, mae=mae, best_rmse=best_rmse)
+                # pbar.set_postfix(loss=loss)
                 n_rounds += 1
-            if finish:
-                break
+            mse, rmse, mae = test_model(model, user_id_list, item_id_list, test_dataset, args)
+            pbar.set_postfix(loss=loss, rmse=rmse, mse=mse, mae=mae, best_rmse=best_rmse)
+            if rmse < best_rmse:
+                best_rmse = rmse
+                best_model = copy.deepcopy(model)
+                patience = args.early_stop
+            else:
+                patience -= 1
+                if patience == 0:
+                    finish = True
+                    break
+
         print("Best rmse:", best_rmse)
     save_dir = f"{args.root_path}/model/{args.dataset}/{args.model}"
     if not os.path.exists(save_dir):

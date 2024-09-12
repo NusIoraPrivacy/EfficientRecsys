@@ -35,7 +35,7 @@ def get_args():
                         help = "learning rate for denoise model")
     parser.add_argument("--n_select", type=int, default=16, 
                         help = "number of selected client per iteration")
-    parser.add_argument("--early_stop", type=int, default=100, 
+    parser.add_argument("--early_stop", type=int, default=20, 
                         help = "number of rounds for early stop")
     parser.add_argument("--n_log_rounds", type=int, default=50, 
                         help = "number of rounds to log the accuracy")
@@ -45,7 +45,7 @@ def get_args():
                         help = "number of epochs for denoise model")
     parser.add_argument("--d_batch_size", type=int, default=100, 
                         help = "batch size for denoise model")
-    parser.add_argument("--n_sample_items", type=int, default=16, 
+    parser.add_argument("--n_sample_items", type=int, default=100, 
                         help = "number of items to sample for each user during training")
     parser.add_argument("--max_items", type=int, default=150, 
                         help = "maximum number of sampled items per user in a denoise model")
