@@ -33,7 +33,7 @@ def get_args():
                         help = "learning rate for recsys")
     parser.add_argument("--d_lr", type=float, default=0.05, 
                         help = "learning rate for denoise model")
-    parser.add_argument("--n_select", type=int, default=16, 
+    parser.add_argument("--batch_size", type=int, default=100, 
                         help = "number of selected client per iteration")
     parser.add_argument("--early_stop", type=int, default=20, 
                         help = "number of rounds for early stop")

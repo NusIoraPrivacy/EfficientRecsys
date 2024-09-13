@@ -33,12 +33,12 @@ def train_fl_model(user_id_list, item_id_list, train_dataset, test_dataset, mode
     model = model.to(args.device)
     n_items = len(item_id_list)
     n_users = len(user_id_list)
-    uid_seq = DataLoader(ClientsSampler(n_users), batch_size=args.n_select, shuffle=True)
-    milestones = [args.epochs*i//5 for i in range(1, 5)]
+    uid_seq = DataLoader(ClientsSampler(n_users), batch_size=args.batch_size, shuffle=True)
+    milestones = [args.epochs*i//20 for i in range(1, 5, 2)]
     user_optimizers = [torch.optim.Adam(model.parameters(), betas=(0.9, 0.99), lr=args.lr) for i in range(n_users)]
     user_schedulers = [torch.optim.lr_scheduler.MultiStepLR(user_optimizers[i], milestones=milestones, gamma=0.5) for i in range(n_users)]
     total_rounds = args.epochs*len(uid_seq)
-    milestones = [total_rounds*i//5 for i in range(1, 5)]
+    milestones = [total_rounds*i//20 for i in range(1, 5, 2)]
     server_optimizer = torch.optim.Adam(model.parameters(), betas=(0.9, 0.99), lr=args.lr)
     server_scheduler = torch.optim.lr_scheduler.MultiStepLR(server_optimizer, milestones=milestones, gamma=0.5)
 
@@ -114,7 +114,7 @@ def train_fl_model(user_id_list, item_id_list, train_dataset, test_dataset, mode
                 server_optimizer.zero_grad()
                 for name, param in model.named_parameters():
                     if name not in private_params:
-                        public_agg[name] = public_agg[name]/args.n_select
+                        public_agg[name] = public_agg[name]/args.batch_size
                         if "embedding_item" in name:
                             public_agg[name] += 2 * param / len(param) # add regularization term
                         param.grad = public_agg[name]

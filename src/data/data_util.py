@@ -147,9 +147,10 @@ def load_data(args):
     if args.dataset == "bookcrossing":
         rating_path = f"{data_path}/BX-Book-Ratings.csv"
         rating_df = pd.read_csv(rating_path, delimiter=';', encoding="iso-8859-1")
+        print(rating_df.head())
         item_path = f"{data_path}/BX_Books.csv"
         item_df = pd.read_csv(item_path, delimiter=';', encoding="iso-8859-1")
-        # print(item_df.head())
+        print(item_df.head())
         # user_path = f"{data_path}/users.dat"
         # user_df = pd.read_csv(user_path, delimiter='::', header=None, names=["UserID", "Gender", "Age", "Occupation", "Zip-code"])
         # item_df, user_df, rating_df = standard_id(item_df, user_df, rating_df)

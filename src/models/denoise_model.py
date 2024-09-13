@@ -211,8 +211,8 @@ class DeepFM_d(nn.Module):
             nn.ReLU(),
             nn.Linear(2 * 4, 1),
             )
-        self.p1 = nn.Parameter(torch.tensor([0.0]))
-        self.p2 = nn.Parameter(torch.tensor([1.0]))
+        self.p1 = nn.Parameter(torch.tensor([1.0]))
+        self.p2 = nn.Parameter(torch.tensor([0.0]))
         self.p3 = nn.Parameter(torch.tensor([0.0]))
         self.p4 = nn.Parameter(torch.tensor([0.0]))
         self.p5 = nn.Parameter(torch.tensor([0.0]))
@@ -250,18 +250,19 @@ class DeepFM_d(nn.Module):
         item_embs = self.embedding_item(item_ids) # batch size, item size, 1, dim
         item_feat_embs = torch.einsum("ij, bmi->bmij", self.embedding_item_feats.weight, item_feat) # batch size, item size, num_feat, dim
         all_item_embs = torch.cat([item_embs, item_feat_embs], dim=2)
-        user_item = torch.cat([all_user_embs, all_item_embs], dim=2)
-        user_item = (user_item.sum(2).pow(2) - user_item.pow(2).sum(2)).sum(-1)*0.5
-        user_noise = torch.cat([all_user_embs, all_noises], dim=2)
-        user_noise = (user_noise.sum(2).pow(2) - user_noise.pow(2).sum(2)).sum(-1)*0.5
-        item_noise = torch.cat([all_item_embs, all_noises], dim=2)
-        item_noise = (item_noise.sum(2).pow(2) - item_noise.pow(2).sum(2)).sum(-1)*0.5
-        all_inputs = torch.cat([all_user_embs, all_item_embs, all_noises], dim=2) # batch size, item size, num_feat, dim
+        all_embs = torch.cat([all_user_embs, all_item_embs], dim=2)
+        pos_terms = all_embs.sum(2).pow(2)
+        neg_terms = all_embs.pow(2).sum(2)
+        fm_denoise_output = (pos_terms - neg_terms).sum(-1)*0.5
+        all_noisy_embs = torch.cat([all_user_embs+all_noises, all_item_embs], dim=2)
+        pos_terms = all_noisy_embs.sum(2).pow(2)
+        neg_terms = all_noisy_embs.pow(2).sum(2)
+        
         bz, item_size, n_feats, n_dim = all_inputs.shape
         all_inputs = all_inputs.view(bz, item_size, n_feats * n_dim)
-        denoise_output = self.hidden_layers(all_inputs)
-        denoise_output = denoise_output.squeeze(-1)
-        denoise_output = self.p1 * ratings + self.p2 * denoise_output + self.p3 * user_item + self.p4 * user_noise + self.p5 * item_noise
+        lin_denoise_output = self.hidden_layers(all_inputs)
+        lin_denoise_output = lin_denoise_output.squeeze(-1)
+        denoise_output = self.p1 * fm_denoise_output + self.p2 * lin_denoise_output + self.p3 * ratings
         return denoise_output
 
     def get_loss(self, true_preds, denoise_preds, mask=None):
