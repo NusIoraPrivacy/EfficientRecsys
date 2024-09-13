@@ -20,11 +20,15 @@ def test_model(model, user_id_list, item_id_list, test_dataset, args):
     for i in range(len(user_id_list)):
         # user_id_tensor = torch.tensor([i] * len(item_id_list)).to(args.device)
         # item_id_tensor = torch.tensor(item_id_list).to(args.device)
-        this_users, this_items, true_rating, rating_vec, c_vec, item_feat, user_feat = test_dataset[i]
-        pred = model(this_users, this_items, user_feats=user_feat, item_feats=item_feat)
-        # obtain rmse
-        real_label.extend(true_rating.tolist())
-        prediction.extend(pred.tolist())
+        try:
+            this_users, this_items, true_rating, rating_vec, c_vec, item_feat, user_feat = test_dataset[i]
+        except KeyError:
+            continue
+        if len(this_users) > 0:
+            pred = model(this_users, this_items, user_feats=user_feat, item_feats=item_feat)
+            # obtain rmse
+            real_label.extend(true_rating.tolist())
+            prediction.extend(pred.tolist())
     # print(prediction)
     mse, rmse, mae = cal_metrics(prediction, real_label, args)
     return mse, rmse, mae
@@ -60,10 +64,15 @@ def train_fl_model(user_id_list, item_id_list, train_dataset, test_dataset, mode
                 for name, param in model.named_parameters():
                     if name not in private_params:
                         public_agg[name] = 0
+                n_train_users = 0
                 for i in this_user_list:
                     # obtain rating prediction
                     # print("embedding before update:", model.embedding_user.weight[i])
-                    this_users, this_items, true_rating, rating_vec, c_vec, item_feat, user_feat = train_dataset[i]
+                    try:
+                        this_users, this_items, true_rating, rating_vec, c_vec, item_feat, user_feat = train_dataset[i]
+                        n_train_users += 1
+                    except KeyError:
+                        continue
                     # print(this_users, this_items, true_rating, item_feat, user_feat)
                     # update user embedding
                     if args.model == "MF" and args.als:
@@ -114,7 +123,7 @@ def train_fl_model(user_id_list, item_id_list, train_dataset, test_dataset, mode
                 server_optimizer.zero_grad()
                 for name, param in model.named_parameters():
                     if name not in private_params:
-                        public_agg[name] = public_agg[name]/args.batch_size
+                        public_agg[name] = public_agg[name]/n_train_users
                         if "embedding_item" in name:
                             public_agg[name] += 2 * param / len(param) # add regularization term
                         param.grad = public_agg[name]

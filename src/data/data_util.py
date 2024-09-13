@@ -16,8 +16,12 @@ def standard_id(item_df, user_df, rating_df):
     for i, itemid in enumerate(itemIDs):
         itemid2encode[itemid] = i
 
+    # rating_df['UserID'] = rating_df['UserID'].apply(lambda x: userid2encode[x] if x in userid2encode.keys() else x)
+    # rating_df['ItemID'] = rating_df['ItemID'].apply(lambda x: itemid2encode[x] if x in itemid2encode.keys() else x)
     rating_df['UserID'] = rating_df['UserID'].apply(lambda x: userid2encode[x])
     rating_df['ItemID'] = rating_df['ItemID'].apply(lambda x: itemid2encode[x])
+    # rating_df = rating_df[rating_df['UserID'].isin(userid2encode.values())]
+    # rating_df = rating_df[rating_df['ItemID'].isin(itemid2encode.values())]
 
     item_df['ItemID'] = item_df['ItemID'].apply(lambda x: itemid2encode[x])
     user_df['UserID'] = user_df['UserID'].apply(lambda x: userid2encode[x])
@@ -48,10 +52,13 @@ def train_test_split(ratings_dict, args, item_id_list=None):
         rating_list = ratings_dict[user_id]
         random.shuffle(rating_list)
         test_num = int(len(rating_list) * args.test_pct)
-        train_data[user_id] = rating_list[:-test_num]
-        # test_data[user_id] = {}
-        # test_data[user_id]["positive"] = rating_list[-test_num:]
-        test_data[user_id] = rating_list[-test_num:]
+        if test_num == 0:
+            train_data[user_id] = rating_list
+            test_data[user_id] = []
+            # print(user_id, len(rating_list))
+        else:
+            train_data[user_id] = rating_list[:-test_num]
+            test_data[user_id] = rating_list[-test_num:]
 
     return train_data, test_data
 
@@ -76,15 +83,39 @@ def genre_to_onehot(item_df, args):
     return item_df
 
 def process_user_df(user_df, args):
-    gender_one_hot = pd.get_dummies(user_df["Gender"], prefix="gender", dtype=int)
-    age_one_hot = pd.get_dummies(user_df["Age"], prefix="age", dtype=int)
-    occupation_one_hot = pd.get_dummies(user_df["Occupation"], prefix="occ", dtype=int)
-    drop_cols = [col for col in user_df.columns if col != "UserID"]
-    user_df.drop(drop_cols, axis=1, inplace=True)
-    for df in [gender_one_hot, age_one_hot, occupation_one_hot]:
-        for col in df.columns:
-            user_df[col] = df[col]
+    if args.dataset == "ml-1m":
+        gender_one_hot = pd.get_dummies(user_df["Gender"], prefix="gender", dtype=int)
+        age_one_hot = pd.get_dummies(user_df["Age"], prefix="age", dtype=int)
+        occupation_one_hot = pd.get_dummies(user_df["Occupation"], prefix="occ", dtype=int)
+        drop_cols = [col for col in user_df.columns if col != "UserID"]
+        user_df.drop(drop_cols, axis=1, inplace=True)
+        for df in [gender_one_hot, age_one_hot, occupation_one_hot]:
+            for col in df.columns:
+                user_df[col] = df[col]
+    elif args.dataset == "bookcrossing":
+        user_df["Country"] = user_df["Location"].apply(lambda x: (x.split(",")[-1]).strip().strip('"').strip("\\"))
+        user_df["Country"] = user_df["Country"].apply(lambda x: replace_loc[x] if x in replace_loc.keys() else x)
+        user_df["Country"] = user_df["Country"].apply(lambda x: "na" if x not in common_countries else x)
+        country_one_hot = pd.get_dummies(user_df["Country"], prefix="ctr", dtype=int)
+        # age_one_hot = pd.get_dummies(user_df["Age"], prefix="ctr", dtype=int)
+        drop_cols = [col for col in user_df.columns if col != "UserID"]
+        user_df.drop(drop_cols, axis=1, inplace=True)
+        # for df in [country_one_hot, age_one_hot]:
+        #     for col in df.columns:
+        #         user_df[col] = df[col]
+        user_df = pd.concat([user_df, country_one_hot], axis=1)
     return user_df
+
+def process_item_df(item_df, args):
+    if args.dataset == "bookcrossing":
+        pub_year_one_hot = pd.get_dummies(item_df["Year-Of-Publication"], prefix="year", dtype=int)
+        drop_cols = [col for col in item_df.columns if col != "ItemID"]
+        item_df.drop(drop_cols, axis=1, inplace=True)
+        # for df in [pub_year_one_hot]:
+        #     for col in df.columns:
+        #         item_df[col] = df[col]
+        item_df = pd.concat([item_df, pub_year_one_hot], axis=1)
+        return item_df
 
 def load_data(args):
     data_path = f"{args.root_path}/data/{args.dataset}"
@@ -118,7 +149,7 @@ def load_data(args):
         # item_df, user_df, rating_df = standard_id(item_df, user_df, rating_df)
         rating_per_user = rating_df.groupby("UserID")["Rating"].count()
         print(len(item_df))
-        return item_df, rating_df
+        return item_df, None, rating_df
     
     if args.dataset == "ml-20m":
         rating_path = f"{data_path}/ratings.csv"
@@ -130,7 +161,7 @@ def load_data(args):
         # user_df = pd.read_csv(user_path, delimiter='::', header=None, names=["UserID", "Gender", "Age", "Occupation", "Zip-code"])
         # item_df, user_df, rating_df = standard_id(item_df, user_df, rating_df)
         print(len(item_df))
-        return item_df, rating_df
+        return item_df, None, rating_df
     
     if args.dataset == "ml-25m":
         rating_path = f"{data_path}/ratings.csv"
@@ -138,34 +169,49 @@ def load_data(args):
         item_path = f"{data_path}/movies.csv"
         item_df = pd.read_csv(item_path, encoding="iso-8859-1")
         # print(item_df.head())
-        # user_path = f"{data_path}/users.dat"
-        # user_df = pd.read_csv(user_path, delimiter='::', header=None, names=["UserID", "Gender", "Age", "Occupation", "Zip-code"])
+        user_path = f"{data_path}/users.csv"
+        user_df = pd.read_csv(user_path, encoding="iso-8859-1", header=None, names=["UserID", "Gender", "Age", "Occupation", "Zip-code"])
         # item_df, user_df, rating_df = standard_id(item_df, user_df, rating_df)
-        print(len(item_df))
-        return item_df, rating_df
+        return item_df, user_df, rating_df
     
     if args.dataset == "bookcrossing":
         rating_path = f"{data_path}/BX-Book-Ratings.csv"
         rating_df = pd.read_csv(rating_path, delimiter=';', encoding="iso-8859-1")
-        print(rating_df.head())
+        rating_df.columns = ["UserID", "ItemID", "Rating"]
+        top_items = rating_df.groupby('ItemID')['Rating'].count()
+        item_thd, user_thd = rating_thds["bookcrossing"]
+        top_items = top_items[top_items >= item_thd]
+        top_items = top_items.index
+        rating_df = rating_df[rating_df['ItemID'].isin(top_items)]
+        top_users = rating_df.groupby('UserID')['Rating'].count()
+        top_users = top_users[top_users >= user_thd]
+        print(top_users.mean())
+        top_users = top_users.index
+        rating_df = rating_df[rating_df['UserID'].isin(top_users)]
+
         item_path = f"{data_path}/BX_Books.csv"
         item_df = pd.read_csv(item_path, delimiter=';', encoding="iso-8859-1")
-        print(item_df.head())
-        # user_path = f"{data_path}/users.dat"
-        # user_df = pd.read_csv(user_path, delimiter='::', header=None, names=["UserID", "Gender", "Age", "Occupation", "Zip-code"])
-        # item_df, user_df, rating_df = standard_id(item_df, user_df, rating_df)
-        rating_per_user = rating_df.groupby("User-ID")["Book-Rating"].count()
-        print(rating_per_user.values.mean())
-        print(len(item_df))
-        return rating_df, item_df
-
-
-# # sample unrated items
-# rated_items = [i[0] for i in rating_list]
-# unrated_items = [i for i in item_id_list if i not in rated_items]
-# random.shuffle(unrated_items)
-# sample_train_unrated = unrated_items[:args.n_train_neg]
-# sample_test_unrated = unrated_items[args.n_train_neg:(args.n_train_neg+args.n_test_neg)]
-# for item in sample_train_unrated:
-#     train_data[user_id].append([int(item), 0])
-# test_data[user_id]["negative"] = [int(item) for item in sample_test_unrated]
+        item_df.columns = ["ItemID", "Book-Title", "Book-Author", "Year-Of-Publication", "Publisher", "Image-URL-S", "Image-URL-M", "Image-URL-L"]
+        user_path = f"{data_path}/BX-Users.csv"
+        user_df = pd.read_csv(user_path, delimiter=';', encoding="iso-8859-1")
+        user_df.columns = ["UserID", "Location", "Age"]
+        # filter records
+        rated_user_ids = set(rating_df.UserID.unique()).intersection(set(user_df.UserID.unique()))
+        rated_item_ids = set(rating_df.ItemID.unique()).intersection(set(item_df.ItemID.unique()))
+        rating_df = rating_df[rating_df['UserID'].isin(rated_user_ids)]
+        rating_df = rating_df[rating_df['ItemID'].isin(rated_item_ids)]
+        user_df = user_df[user_df["UserID"].isin(rated_user_ids)]
+        item_df = item_df[item_df['ItemID'].isin(rated_item_ids)]
+        item_df, user_df, rating_df = standard_id(item_df, user_df, rating_df)
+        user_df = process_user_df(user_df, args) 
+        item_df = process_item_df(item_df, args)
+        print(item_df.shape)
+        print(user_df.shape)
+        # print(filter_user_df.shape)
+        # print(filter_item_df.shape)
+        combine_df = rating_df.merge(item_df, on="ItemID", how='left')
+        combine_df = combine_df.merge(user_df, on="UserID", how='left')
+        # avg_rating = combine_df["Rating"].mean()
+        # base_rmse = np.sqrt(((combine_df["Rating"] - avg_rating) ** 2).mean())
+        # print(base_rmse)
+        return item_df, user_df, combine_df

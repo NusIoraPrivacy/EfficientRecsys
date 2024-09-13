@@ -22,14 +22,14 @@ class ClientsDataset(Dataset):
     def __init__(self, data_dict, n_items, n_users, n_user_feat, n_item_feat, args):
         self.data_dict = data_dict
         self.args = args
-        # get rating vector
-        self.rating_vector = np.zeros((n_users, n_items))
-        for user_idx in self.data_dict:
-            for record in self.data_dict[user_idx]:
-                item_idx, rating = record[0], record[1]
-                self.rating_vector[user_idx, item_idx] = rating
-        self.c_vecs = 1 * (self.rating_vector > 0)
-        self.rating_vector = sp.csr_matrix(self.rating_vector)
+        # # get rating vector
+        # self.rating_vector = np.zeros((n_users, n_items))
+        # for user_idx in self.data_dict:
+        #     for record in self.data_dict[user_idx]:
+        #         item_idx, rating = record[0], record[1]
+        #         self.rating_vector[user_idx, item_idx] = rating
+        # self.c_vecs = 1 * (self.rating_vector > 0)
+        # self.rating_vector = sp.csr_matrix(self.rating_vector)
         self.n_user_feat = n_user_feat
         self.n_item_feat = n_item_feat
 
@@ -44,8 +44,10 @@ class ClientsDataset(Dataset):
         users = torch.tensor([idx] * len(user_rating_list)).to(self.args.device)
         items = torch.tensor([rate[0] for rate in user_rating_list]).to(self.args.device)
         ratings = torch.tensor([rate[1] for rate in user_rating_list]).to(self.args.device)
-        rating_vec = self.rating_vector[idx]
-        c_vec = self.c_vecs[idx]
+        # rating_vec = self.rating_vector[idx]
+        # c_vec = self.c_vecs[idx]
+        rating_vec = None
+        c_vec = None
         item_feat = torch.tensor([rate[2:(2+self.n_item_feat)] for rate in user_rating_list]).to(self.args.device)
         user_feat = torch.tensor([rate[(-self.n_user_feat):] for rate in user_rating_list]).to(self.args.device)
         return users, items, ratings, rating_vec, c_vec, item_feat, user_feat
