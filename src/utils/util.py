@@ -23,11 +23,11 @@ def str2type(v):
 def cal_metrics(prediction, real_label, args):
     prediction = torch.tensor(prediction)
     real_label = torch.tensor(real_label)
-    print(real_label)
-    print(prediction)
+    # print(real_label)
+    # print(prediction)
     min_rate, max_rate = rating_range[args.dataset]
     prediction = torch.clip(prediction, min=min_rate, max=max_rate)
-    print(prediction)
+    # print(prediction)
     mse = torch.mean((real_label - prediction)**2)
     rmse = torch.sqrt(torch.mean((real_label - prediction)**2))
     mae = torch.mean(torch.abs(real_label - prediction))

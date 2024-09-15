@@ -195,21 +195,21 @@ class FM_d(nn.Module):
 
 class DeepFM_d(nn.Module):
     def __init__(self, num_users, num_items, num_user_feats, num_item_feats, emb_dim, args):
-        super(FM_d, self).__init__()
+        super(DeepFM_d, self).__init__()
         self.embedding_item = nn.Embedding(
-            num_embeddings=num_items, embedding_dim=4)
+            num_embeddings=num_items, embedding_dim=args.d_dim)
         self.embedding_item_feats = nn.Embedding(
-            num_embeddings=num_item_feats, embedding_dim=4)
+            num_embeddings=num_item_feats, embedding_dim=args.d_dim)
         self.lin_layers = nn.ModuleList([nn.Linear(emb_dim, 4) for i in range(4)])
-        self.embed_output_dim = (3 + 2*num_user_feats + num_item_feats) * 4
+        self.embed_output_dim = (3 + 2*num_user_feats + num_item_feats) * args.d_dim
         self.hidden_layers = nn.Sequential(
-            nn.Linear(self.embed_output_dim, 2 * 4),
-            nn.BatchNorm1d(self.args.max_items),
+            nn.Linear(self.embed_output_dim, 2 * args.d_dim),
+            nn.BatchNorm1d(args.max_items),
             nn.ReLU(),
-            nn.Linear(self.embed_output_dim, 2 * 4),
-            nn.BatchNorm1d(self.args.max_items),
+            nn.Linear(2 * args.d_dim, 2 * args.d_dim),
+            nn.BatchNorm1d(args.max_items),
             nn.ReLU(),
-            nn.Linear(2 * 4, 1),
+            nn.Linear(2 * args.d_dim, 1),
             )
         self.p1 = nn.Parameter(torch.tensor([1.0]))
         self.p2 = nn.Parameter(torch.tensor([0.0]))

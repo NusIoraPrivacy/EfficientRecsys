@@ -45,8 +45,9 @@ class MF(nn.Module):
 
     def get_loss(self, ratings, predictions):
         loss = torch.mean((ratings - predictions) ** 2)
-        # reg_loss = self.embedding_user.weight.norm(2).pow(2)/self.num_users
-        # loss += reg_loss
+        if self.args.regularization:
+            reg_loss = self.embedding_user.weight.norm(2).pow(2) * self.args.l2_reg_u
+            loss += reg_loss
         return loss
 
 # neural collaborative filtering
@@ -129,8 +130,9 @@ class NCF(nn.Module):
 
     def get_loss(self, ratings, predictions):
         loss = torch.mean((ratings - predictions) ** 2)
-        # reg_loss = (self.gmf_embedding_user.weight.norm(2).pow(2)+self.ncf_embedding_user.weight.norm(2).pow(2))/self.num_users
-        # loss += reg_loss
+        if self.args.regularization:
+            reg_loss = (self.gmf_embedding_user.weight.norm(2).pow(2)+self.ncf_embedding_user.weight.norm(2).pow(2)) * self.args.l2_reg_u
+            loss += reg_loss
         return loss
 
 class FM(nn.Module):
@@ -206,8 +208,9 @@ class FM(nn.Module):
 
     def get_loss(self, ratings, predictions):
         loss = torch.mean((ratings - predictions) ** 2)
-        # reg_loss = self.embedding_user.weight.norm(2).pow(2)/self.num_users
-        # loss += reg_loss
+        if self.args.regularization:
+            reg_loss = self.embedding_user.weight.norm(2).pow(2) * self.args.l2_reg_u
+            loss += reg_loss
         return loss
 
 class DeepFM(nn.Module):
@@ -298,6 +301,7 @@ class DeepFM(nn.Module):
 
     def get_loss(self, ratings, predictions):
         loss = torch.mean((ratings - predictions) ** 2)
-        # reg_loss = self.embedding_user.weight.norm(2).pow(2)/self.num_users
-        # loss += reg_loss
+        if self.args.regularization:
+            reg_loss = self.embedding_user.weight.norm(2).pow(2) * self.args.l2_reg_u
+            loss += reg_loss
         return loss

@@ -15,8 +15,10 @@ def get_args():
                         help = "dataset")
     parser.add_argument("--n_factors", type=int, default=8, 
                         help = "number of latent factors")
-    parser.add_argument("--l2_reg", type=float, default=2, 
-                        help = "weight on l2 regularization")
+    parser.add_argument("--l2_reg_u", type=float, default=0.01, 
+                        help = "weight on l2 regularization for user embedding")
+    parser.add_argument("--l2_reg_i", type=float, default=0.01, 
+                        help = "weight on l2 regularization for item embedding")
     # parser.add_argument("--alpha", type=float, default=500, 
     #                     help = "weight on non-zero ratings")
     parser.add_argument("--implicit", type=str2bool, default=False, 
@@ -45,6 +47,9 @@ def get_args():
                         help = "number of epochs for denoise model")
     parser.add_argument("--d_batch_size", type=int, default=100, 
                         help = "batch size for denoise model")
+    parser.add_argument("--d_dim", type=int, default=5, 
+                        help = "denosie dim")
+    parser.add_argument("--regularization", action="store_true")
     parser.add_argument("--n_sample_items", type=int, default=100, 
                         help = "number of items to sample for each user during training")
     parser.add_argument("--max_items", type=int, default=150, 

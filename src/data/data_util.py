@@ -118,6 +118,27 @@ def process_item_df(item_df, args):
         #         item_df[col] = df[col]
         item_df = pd.concat([item_df, pub_year_one_hot], axis=1)
         return item_df
+    elif args.dataset == "yelp":
+        item_df["Categories"] = item_df["Categories"].apply(lambda x: x.split(", ") if isinstance(x, str) else [])
+        categories_values = item_df["Categories"].tolist()
+        all_categories = []
+        for categories in categories_values:
+            for cat in categories:
+                if cat not in all_categories:
+                    all_categories.append(cat)
+        # print(len(all_categories))
+        # print(all_categories)
+        category_mat = np.zeros((len(item_df), len(all_categories)))
+        for i, cat_list in enumerate(categories_values):
+            for j, cat in enumerate(all_categories):
+                if cat in cat_list:
+                    category_mat[i,j] = 1
+        category_df = pd.DataFrame(category_mat, columns=all_categories)
+        state_df = pd.get_dummies(item_df["State"], prefix="state", dtype=int)
+        drop_cols = [col for col in item_df.columns if col != "ItemID"]
+        item_df.drop(drop_cols, axis=1, inplace=True)
+        item_df = pd.concat([item_df, state_df], axis=1)
+        return item_df
 
 def load_data(args):
     data_path = f"{args.root_path}/data/{args.dataset}"
@@ -193,20 +214,33 @@ def load_data(args):
         return item_df, None, rating_df
     
     if args.dataset == "yelp":
-        rating_path = f"{data_path}/yelp_academic_dataset_review.json"
-        rating_df = pd.read_json(rating_path, lines=True)
-        rating_df = rating_df[["user_id", "business_id", "stars"]]
-        print(rating_df.head())
-        item_path = f"{data_path}/yelp_academic_dataset_business.json"
-        item_df = pd.read_json(item_path, lines=True)
-        item_df = item_df[["business_id", "state", "is_open", "categories"]]
-        item_df = item_df[item_df["is_open"]==1]
-        rating_df = rating_df[rating_df["business_id"].isin(item_df["business_id"].unique())]
-        rating_df.to_csv(f"{data_path}/yelp_academic_dataset_review.csv", index=False)
-        item_df.to_csv(f"{data_path}/yelp_academic_dataset_business.csv", index=False)
-        print(item_df.head())
-        print(len(rating_df))
-        print(len(item_df))
+        rating_path = f"{data_path}/yelp_academic_dataset_review.csv"
+        rating_df = pd.read_csv(rating_path)
+        rating_df.columns = ["UserID", "ItemID", "Rating"]
+        # print(rating_df["Rating"].min(), rating_df["Rating"].max())
+        top_users = rating_df.groupby('UserID')['Rating'].count()
+        top_users = top_users.sort_values(ascending=False)[:10000].index
+        rating_df = rating_df[rating_df['UserID'].isin(top_users)]
+        top_items = rating_df.groupby('ItemID')['Rating'].count()
+        top_items = top_items.sort_values(ascending=False)[:50000].index
+        item_path = f"{data_path}/yelp_academic_dataset_business.csv"
+        item_df = pd.read_csv(item_path)
+        item_df.columns = ["ItemID", "State", "is_open", "Categories"]
+        rated_item_ids = set(rating_df.ItemID.unique()).intersection(set(item_df.ItemID.unique()))
+        rating_df = rating_df[rating_df['ItemID'].isin(rated_item_ids)]
+        item_df = item_df[item_df['ItemID'].isin(rated_item_ids)]
+
+        unique_user_ids = rating_df.UserID.unique()
+        user_df = pd.DataFrame(data={"UserID": unique_user_ids})
+        item_df, user_df, rating_df = standard_id(item_df, user_df, rating_df)
+        item_df = process_item_df(item_df, args)
+        avg_user = rating_df.groupby("UserID")["Rating"].count()
+        print(avg_user.mean())
+        combine_df = rating_df.merge(item_df, on="ItemID", how='left')
+        avg_rating = combine_df["Rating"].mean()
+        base_rmse = np.sqrt(((combine_df["Rating"] - avg_rating) ** 2).mean())
+        print("baseline rmse:", base_rmse)
+        return item_df, user_df, combine_df
 
     if args.dataset == "ml-25m":
         rating_path = f"{data_path}/ratings.csv"

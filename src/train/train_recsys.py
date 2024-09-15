@@ -38,11 +38,11 @@ def train_fl_model(user_id_list, item_id_list, train_dataset, test_dataset, mode
     n_items = len(item_id_list)
     n_users = len(user_id_list)
     uid_seq = DataLoader(ClientsSampler(n_users), batch_size=args.batch_size, shuffle=True)
-    milestones = [args.epochs*i//20 for i in range(1, 20, 2)]
+    milestones = [args.epochs*i//10 for i in range(1, 10)]
     user_optimizers = [torch.optim.Adam(model.parameters(), betas=(0.9, 0.99), lr=args.lr) for i in range(n_users)]
     # user_schedulers = [torch.optim.lr_scheduler.MultiStepLR(user_optimizers[i], milestones=milestones, gamma=0.5) for i in range(n_users)]
     total_rounds = args.epochs*len(uid_seq)
-    milestones = [total_rounds*i//20 for i in range(1, 20, 2)]
+    milestones = [total_rounds*i//10 for i in range(1, 10)]
     server_optimizer = torch.optim.Adam(model.parameters(), betas=(0.9, 0.99), lr=args.lr)
     # server_scheduler = torch.optim.lr_scheduler.MultiStepLR(server_optimizer, milestones=milestones, gamma=0.5)
 
@@ -54,6 +54,7 @@ def train_fl_model(user_id_list, item_id_list, train_dataset, test_dataset, mode
     finish = False
     with tqdm(total=args.epochs*len(uid_seq)) as pbar:
         for epoch in range(args.epochs):
+            loss_list = []
             for this_user_list in uid_seq:
                 # User updates
                 this_user_list = this_user_list.tolist()
@@ -128,9 +129,13 @@ def train_fl_model(user_id_list, item_id_list, train_dataset, test_dataset, mode
                 for name, param in model.named_parameters():
                     if name not in private_params:
                         public_agg[name] = public_agg[name]/n_train_users
-                        # if "embedding_item" in name:
-                        #     public_agg[name] += (2 * param / len(param) * (public_agg[name] > 0)) # add regularization term
-                        #     print(len(param))
+                        if args.regularization:
+                            if "embedding_item" in name:
+                                reg_term = 2 * param *  args.l2_reg_i * (public_agg[name] > 0)
+                                public_agg[name] += reg_term # add regularization term
+                            elif "embedding_user" in name:
+                                reg_term = 2 * param *  args.l2_reg_u * (public_agg[name] > 0)
+                                public_agg[name] += reg_term # add regularization term
                         param.grad = public_agg[name]
                 server_optimizer.step()
                 # server_scheduler.step()
@@ -141,7 +146,9 @@ def train_fl_model(user_id_list, item_id_list, train_dataset, test_dataset, mode
                 pbar.update(1)
                 pbar.set_postfix(loss=loss)
                 n_rounds += 1
+                loss_list.append(loss)
             mse, rmse, mae = test_model(model, user_id_list, item_id_list, test_dataset, args)
+            loss = np.mean(loss_list)
             pbar.set_postfix(loss=loss, rmse=rmse, mse=mse, mae=mae, best_rmse=best_rmse)
             if rmse < best_rmse:
                 best_rmse = rmse

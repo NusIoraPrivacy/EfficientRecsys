@@ -3,7 +3,7 @@ norm_dict = {"MF": 9, "NCF": (3.5, 2.8), "FM": (5.5, 2), "DeepFM": (4.5, 2.7)}
 
 distribution_dict = {"MF": (0.3, 1.5), "NCF": (0.01, 1.2)}
 
-rating_range = {"ml-1m": (1, 5), "bookcrossing": (0, 10)}
+rating_range = {"ml-1m": (1, 5), "bookcrossing": (0, 10), "yelp": (1, 5)}
 
 # rating_thds = {"bookcrossing": (5, 10)} # (15, 15) 10391 items + 4517 users average 69 rated per user
 rating_thds = {"bookcrossing": (15, 15)} # (15, 15) 10391 items + 4517 users average 69 rated per user
