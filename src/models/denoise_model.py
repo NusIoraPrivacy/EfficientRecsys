@@ -204,10 +204,10 @@ class DeepFM_d(nn.Module):
         self.embed_output_dim = (3 + 2*num_user_feats + num_item_feats) * 4
         self.hidden_layers = nn.Sequential(
             nn.Linear(self.embed_output_dim, 2 * 4),
-            nn.BatchNorm1d(2 * 4),
+            nn.BatchNorm1d(self.args.max_items),
             nn.ReLU(),
             nn.Linear(self.embed_output_dim, 2 * 4),
-            nn.BatchNorm1d(2 * 4),
+            nn.BatchNorm1d(self.args.max_items),
             nn.ReLU(),
             nn.Linear(2 * 4, 1),
             )
@@ -257,7 +257,7 @@ class DeepFM_d(nn.Module):
         all_noisy_embs = torch.cat([all_user_embs+all_noises, all_item_embs], dim=2)
         pos_terms = all_noisy_embs.sum(2).pow(2)
         neg_terms = all_noisy_embs.pow(2).sum(2)
-        
+        all_inputs = torch.cat([all_embs, all_noises], dim=2)
         bz, item_size, n_feats, n_dim = all_inputs.shape
         all_inputs = all_inputs.view(bz, item_size, n_feats * n_dim)
         lin_denoise_output = self.hidden_layers(all_inputs)

@@ -11,6 +11,8 @@ class MF(nn.Module):
             num_embeddings=num_users, embedding_dim=args.n_factors)
         self.embedding_item = nn.Embedding(
             num_embeddings=num_items, embedding_dim=args.n_factors)
+        self.user_bias = nn.Parameter(torch.zeros(num_users))
+        self.item_bias = nn.Parameter(torch.zeros(num_items))
         self.args = args
         self.num_users = num_users
         self.num_items = num_items
@@ -35,14 +37,16 @@ class MF(nn.Module):
         items_emb = self.embedding_item(items)
         inner_pro = torch.mul(users_emb, items_emb)
         predictions = torch.sum(inner_pro, dim=1)
+        x_biases = torch.cat([self.user_bias[users].unsqueeze(-1), self.item_bias[items].unsqueeze(-1)], dim=-1).sum(1)
+        predictions += x_biases
         if noise_std > 0:
             return predictions, noise, init_user_emb
         return predictions
 
     def get_loss(self, ratings, predictions):
         loss = torch.mean((ratings - predictions) ** 2)
-        reg_loss = self.embedding_user.weight.norm(2).pow(2)/self.num_users
-        loss += reg_loss
+        # reg_loss = self.embedding_user.weight.norm(2).pow(2)/self.num_users
+        # loss += reg_loss
         return loss
 
 # neural collaborative filtering
@@ -64,8 +68,8 @@ class NCF(nn.Module):
             nn.ReLU(),
             )
         self.output_layer = nn.Sequential(
-            nn.Linear(args.n_factors*3, 1),
-            nn.ReLU()
+            nn.Linear(args.n_factors*3, 1, bias=False),
+            # nn.ReLU()
             )
         self.args = args
         self.num_users = num_users
@@ -78,7 +82,8 @@ class NCF(nn.Module):
     def init_layer(self, m):
         if isinstance(m, nn.Linear):
             nn.init.kaiming_normal_(m.weight, mode='fan_out')
-            nn.init.zeros_(m.bias)
+            if m.bias is not None:
+                nn.init.zeros_(m.bias)
 
     def init_embedding(self):
         nn.init.kaiming_normal_(self.gmf_embedding_user.weight, mode='fan_out')
@@ -124,8 +129,8 @@ class NCF(nn.Module):
 
     def get_loss(self, ratings, predictions):
         loss = torch.mean((ratings - predictions) ** 2)
-        reg_loss = (self.gmf_embedding_user.weight.norm(2).pow(2)+self.ncf_embedding_user.weight.norm(2).pow(2))/self.num_users
-        loss += reg_loss
+        # reg_loss = (self.gmf_embedding_user.weight.norm(2).pow(2)+self.ncf_embedding_user.weight.norm(2).pow(2))/self.num_users
+        # loss += reg_loss
         return loss
 
 class FM(nn.Module):
@@ -201,8 +206,8 @@ class FM(nn.Module):
 
     def get_loss(self, ratings, predictions):
         loss = torch.mean((ratings - predictions) ** 2)
-        reg_loss = self.embedding_user.weight.norm(2).pow(2)/self.num_users
-        loss += reg_loss
+        # reg_loss = self.embedding_user.weight.norm(2).pow(2)/self.num_users
+        # loss += reg_loss
         return loss
 
 class DeepFM(nn.Module):
@@ -293,6 +298,6 @@ class DeepFM(nn.Module):
 
     def get_loss(self, ratings, predictions):
         loss = torch.mean((ratings - predictions) ** 2)
-        reg_loss = self.embedding_user.weight.norm(2).pow(2)/self.num_users
-        loss += reg_loss
+        # reg_loss = self.embedding_user.weight.norm(2).pow(2)/self.num_users
+        # loss += reg_loss
         return loss

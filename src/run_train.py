@@ -14,6 +14,7 @@ if __name__ == "__main__":
     user_id_list = user_df.UserID.unique()
     ratings_dict = get_rating_list(rating_df, args)
     train_data, test_data = train_test_split(ratings_dict, args, item_id_list)
+    # print(train_data[0])
     # cnt = 0
     # for key, value in train_data.items():
     #     print(key)
@@ -23,6 +24,7 @@ if __name__ == "__main__":
     #         break
     n_items = len(item_id_list)
     n_users = len(user_id_list)
+    print(f"item size: {n_items}, user size: {n_users}")
     train_dataset = ClientsDataset(train_data, n_items, n_users, n_user_feat, n_item_feat, args)
     test_dataset = ClientsDataset(test_data, n_items, n_users, n_user_feat, n_item_feat, args)
     model = eval(args.model)(num_users=n_users, num_items=n_items, num_user_feats=n_user_feat, num_item_feats=n_item_feat, args=args)

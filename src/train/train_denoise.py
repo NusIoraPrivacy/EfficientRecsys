@@ -13,16 +13,17 @@ def test_model(model, test_loader, args, denoise=False, denoise_model=None):
     real_label = []
     sensitivities = norm_dict[args.model]
     # testing
-    for batch in test_loader:
-        predictions, noises, init_user_embs, item_ids, ratings, masks, item_feat = batch
-        if denoise:
-            predictions = denoise_model(predictions, item_ids, noises, init_user_embs, item_feat=item_feat)
-        for pred, rating, mask in zip(predictions, ratings, masks):
-            pred = pred[mask>0]
-            rating = rating[mask>0]
-            prediction.extend(pred.tolist())
-            real_label.extend(rating.tolist())
-    mse, rmse, mae = cal_metrics(prediction, real_label, args)
+    with torch.no_grad():
+        for batch in test_loader:
+            predictions, noises, init_user_embs, item_ids, ratings, masks, item_feat = batch
+            if denoise:
+                predictions = denoise_model(predictions, item_ids, noises, init_user_embs, item_feat=item_feat)
+            for pred, rating, mask in zip(predictions, ratings, masks):
+                pred = pred[mask>0]
+                rating = rating[mask>0]
+                prediction.extend(pred.tolist())
+                real_label.extend(rating.tolist())
+        mse, rmse, mae = cal_metrics(prediction, real_label, args)
     return mse, rmse, mae
 
 def train_demod(user_id_list, item_id_list, train_loader, test_loader, base_model, denoise_model, args):

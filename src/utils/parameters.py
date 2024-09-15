@@ -35,8 +35,8 @@ def get_args():
                         help = "learning rate for denoise model")
     parser.add_argument("--batch_size", type=int, default=100, 
                         help = "number of selected client per iteration")
-    parser.add_argument("--early_stop", type=int, default=20, 
-                        help = "number of rounds for early stop")
+    parser.add_argument("--early_stop", type=int, default=50, 
+                        help = "number of rounds/patience for early stop")
     parser.add_argument("--n_log_rounds", type=int, default=50, 
                         help = "number of rounds to log the accuracy")
     parser.add_argument("--epochs", type=int, default=200, 

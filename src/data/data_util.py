@@ -3,6 +3,7 @@ import numpy as np
 import random
 from tqdm import tqdm
 from utils.globals import *
+import json
 
 def standard_id(item_df, user_df, rating_df):
     userIDs = user_df.UserID.unique()
@@ -83,7 +84,7 @@ def genre_to_onehot(item_df, args):
     return item_df
 
 def process_user_df(user_df, args):
-    if args.dataset == "ml-1m":
+    if args.dataset in ["ml-1m", "ml-100k"]:
         gender_one_hot = pd.get_dummies(user_df["Gender"], prefix="gender", dtype=int)
         age_one_hot = pd.get_dummies(user_df["Age"], prefix="age", dtype=int)
         occupation_one_hot = pd.get_dummies(user_df["Occupation"], prefix="occ", dtype=int)
@@ -92,6 +93,7 @@ def process_user_df(user_df, args):
         for df in [gender_one_hot, age_one_hot, occupation_one_hot]:
             for col in df.columns:
                 user_df[col] = df[col]
+
     elif args.dataset == "bookcrossing":
         user_df["Country"] = user_df["Location"].apply(lambda x: (x.split(",")[-1]).strip().strip('"').strip("\\"))
         user_df["Country"] = user_df["Country"].apply(lambda x: replace_loc[x] if x in replace_loc.keys() else x)
@@ -138,18 +140,45 @@ def load_data(args):
         combine_df.drop("Timestamp", axis=1, inplace=True)
         return item_df, user_df, combine_df
     
+    if args.dataset == "ml-100k":
+        rating_path = f"{data_path}/u.data"
+        rating_df = pd.read_csv(rating_path, delimiter='\t', header=None, names=["UserID", "ItemID", "Rating", "Timestamp"])
+        item_path = f"{data_path}/u.item"
+        item_df = pd.read_csv(item_path, delimiter='|', header=None, names=["ItemID", "Title", "release date", "video release date",
+                    "IMDb URL", "unknown", "Action", "Adventure", "Animation", "Children", "Comedy", "Crime", "Documentary", 
+                    "Drama", "Fantasy", "Film-Noir", "Horror", "Musical", "Mystery", "Romance", "Sci-Fi", "Thriller", "War", "Western"], encoding="iso-8859-1")
+        user_path = f"{data_path}/u.user"
+        user_df = pd.read_csv(user_path, delimiter='|', header=None, names=["UserID", "Age", "Gender", "Occupation", "Zip-code"])
+        rated_user_ids = set(rating_df.UserID.unique()).intersection(set(user_df.UserID.unique()))
+        rated_item_ids = set(rating_df.ItemID.unique()).intersection(set(item_df.ItemID.unique()))
+        rating_df = rating_df[rating_df['UserID'].isin(rated_user_ids)]
+        rating_df = rating_df[rating_df['ItemID'].isin(rated_item_ids)]
+        user_df = user_df[user_df["UserID"].isin(rated_user_ids)]
+        item_df = item_df[item_df['ItemID'].isin(rated_item_ids)]
+        item_df, user_df, rating_df = standard_id(item_df, user_df, rating_df)
+        item_df = item_df.drop(["Title", "release date", "video release date", "IMDb URL"], axis=1)
+        user_df = process_user_df(user_df, args)
+        combine_df = rating_df.merge(item_df, on="ItemID", how='left')
+        combine_df = combine_df.merge(user_df, on="UserID", how='left')
+        # print(item_df.head())
+        # print(user_df.head())
+        # avg_user = rating_df.groupby("UserID")["Rating"].count()
+        # print(avg_user.mean())
+        return item_df, user_df, combine_df
+
     if args.dataset == "ml-10m":
         rating_path = f"{data_path}/ratings.dat"
         rating_df = pd.read_csv(rating_path, delimiter='::', header=None, names=["UserID", "ItemID", "Rating", "Timestamp"])
         item_path = f"{data_path}/movies.dat"
         item_df = pd.read_csv(item_path, delimiter='::', header=None, names=["ItemID", "Title", "Genres"], encoding="iso-8859-1")
-        # print(item_df.head())
-        # user_path = f"{data_path}/users.dat"
-        # user_df = pd.read_csv(user_path, delimiter='::', header=None, names=["UserID", "Gender", "Age", "Occupation", "Zip-code"])
-        # item_df, user_df, rating_df = standard_id(item_df, user_df, rating_df)
+        item_df["Genres"] = item_df["Genres"].apply(lambda x: x.split("|"))
+        item_df = genre_to_onehot(item_df, args)
+        unique_user_ids = rating_df.UserID.unique()
+        user_df = pd.DataFrame(data={"UserID": unique_user_ids})
+        item_df, user_df, rating_df = standard_id(item_df, user_df, rating_df)
         rating_per_user = rating_df.groupby("UserID")["Rating"].count()
-        print(len(item_df))
-        return item_df, None, rating_df
+        combine_df = rating_df.merge(item_df, on="ItemID", how='left')
+        return item_df, user_df, combine_df
     
     if args.dataset == "ml-20m":
         rating_path = f"{data_path}/ratings.csv"
@@ -163,6 +192,22 @@ def load_data(args):
         print(len(item_df))
         return item_df, None, rating_df
     
+    if args.dataset == "yelp":
+        rating_path = f"{data_path}/yelp_academic_dataset_review.json"
+        rating_df = pd.read_json(rating_path, lines=True)
+        rating_df = rating_df[["user_id", "business_id", "stars"]]
+        print(rating_df.head())
+        item_path = f"{data_path}/yelp_academic_dataset_business.json"
+        item_df = pd.read_json(item_path, lines=True)
+        item_df = item_df[["business_id", "state", "is_open", "categories"]]
+        item_df = item_df[item_df["is_open"]==1]
+        rating_df = rating_df[rating_df["business_id"].isin(item_df["business_id"].unique())]
+        rating_df.to_csv(f"{data_path}/yelp_academic_dataset_review.csv", index=False)
+        item_df.to_csv(f"{data_path}/yelp_academic_dataset_business.csv", index=False)
+        print(item_df.head())
+        print(len(rating_df))
+        print(len(item_df))
+
     if args.dataset == "ml-25m":
         rating_path = f"{data_path}/ratings.csv"
         rating_df = pd.read_csv(rating_path)
@@ -178,17 +223,25 @@ def load_data(args):
         rating_path = f"{data_path}/BX-Book-Ratings.csv"
         rating_df = pd.read_csv(rating_path, delimiter=';', encoding="iso-8859-1")
         rating_df.columns = ["UserID", "ItemID", "Rating"]
-        top_items = rating_df.groupby('ItemID')['Rating'].count()
-        item_thd, user_thd = rating_thds["bookcrossing"]
-        top_items = top_items[top_items >= item_thd]
-        top_items = top_items.index
-        rating_df = rating_df[rating_df['ItemID'].isin(top_items)]
+        # top_items = rating_df.groupby('ItemID')['Rating'].count()
+        # item_thd, user_thd = rating_thds["bookcrossing"]
+        # top_items = top_items[top_items >= item_thd]
+        # top_items = top_items.index
+        # rating_df = rating_df[rating_df['ItemID'].isin(top_items)]
+        # top_users = rating_df.groupby('UserID')['Rating'].count()
+        # top_users = top_users[top_users >= user_thd]
+        # print(top_users.mean())
+        # top_users = top_users.index
         top_users = rating_df.groupby('UserID')['Rating'].count()
-        top_users = top_users[top_users >= user_thd]
-        print(top_users.mean())
-        top_users = top_users.index
+        top_users = top_users.sort_values(ascending=False)[:6000].index
         rating_df = rating_df[rating_df['UserID'].isin(top_users)]
-
+        top_items = rating_df.groupby('ItemID')['Rating'].count()
+        top_items = top_items.sort_values(ascending=False)[:3000].index
+        rating_df = rating_df[rating_df['ItemID'].isin(top_items)]
+        avg_users = rating_df.groupby('UserID')['Rating'].count()
+        print(avg_users.mean())
+        # top_users = np.random.choice(top_users, 6000, replace=False)
+        
         item_path = f"{data_path}/BX_Books.csv"
         item_df = pd.read_csv(item_path, delimiter=';', encoding="iso-8859-1")
         item_df.columns = ["ItemID", "Book-Title", "Book-Author", "Year-Of-Publication", "Publisher", "Image-URL-S", "Image-URL-M", "Image-URL-L"]
@@ -211,7 +264,7 @@ def load_data(args):
         # print(filter_item_df.shape)
         combine_df = rating_df.merge(item_df, on="ItemID", how='left')
         combine_df = combine_df.merge(user_df, on="UserID", how='left')
-        # avg_rating = combine_df["Rating"].mean()
-        # base_rmse = np.sqrt(((combine_df["Rating"] - avg_rating) ** 2).mean())
-        # print(base_rmse)
+        avg_rating = combine_df["Rating"].mean()
+        base_rmse = np.sqrt(((combine_df["Rating"] - avg_rating) ** 2).mean())
+        print("baseline rmse:", base_rmse)
         return item_df, user_df, combine_df
