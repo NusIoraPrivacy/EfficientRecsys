@@ -126,6 +126,7 @@ def train_fl_model(user_id_list, item_id_list, train_dataset, test_dataset, mode
                                 param.grad = private_grads[name]
                         user_optimizers[i].step()
                         # user_schedulers[i].step()
+                        torch.cuda.empty_cache()
                     user_optimizers[i].zero_grad()
                     # print("embedding after update:", model.embedding_user.weight[i])
 

@@ -140,8 +140,8 @@ def process_item_df(item_df, args):
         drop_cols = [col for col in item_df.columns if col != "ItemID"]
         item_df.drop(drop_cols, axis=1, inplace=True)
         # print(item_df.shape, state_df.shape, category_df.shape)
-        item_df = pd.concat([item_df, state_df, category_df], axis=1)
-        # item_df = pd.concat([item_df, state_df], axis=1)
+        # item_df = pd.concat([item_df, state_df, category_df], axis=1)
+        item_df = pd.concat([item_df, state_df], axis=1)
         return item_df
 
 def load_data(args):
@@ -185,6 +185,7 @@ def load_data(args):
         user_df = process_user_df(user_df, args)
         combine_df = rating_df.merge(item_df, on="ItemID", how='left')
         combine_df = combine_df.merge(user_df, on="UserID", how='left')
+        combine_df.drop("Timestamp", axis=1, inplace=True)
         # print(item_df.head())
         # print(user_df.head())
         # avg_user = rating_df.groupby("UserID")["Rating"].count()
