@@ -3,7 +3,7 @@ norm_dict = {"MF": 9, "NCF": (3.5, 2.8), "FM": (5.5, 2), "DeepFM": (4.5, 2.7)}
 
 distribution_dict = {"MF": (0.3, 1.5), "NCF": (0.01, 1.2)}
 
-rating_range = {"ml-1m": (1, 5), "bookcrossing": (0, 10), "yelp": (1, 5)}
+rating_range = {"ml-1m": (1, 5), "bookcrossing": (0, 10), "yelp": (1, 5), "ml-100k": (1, 5)}
 
 # rating_thds = {"bookcrossing": (5, 10)} # (15, 15) 10391 items + 4517 users average 69 rated per user
 rating_thds = {"bookcrossing": (15, 15)} # (15, 15) 10391 items + 4517 users average 69 rated per user
@@ -23,7 +23,9 @@ all_genre_dict = {
 models_w_feats = ["FM", "DeepFM"]
 
 n_max_user_feat_dict = {
-    "ml-1m": 3
+    "ml-1m": 3,
+    "ml-100k": 3,
+    "yelp": 0,
 }
 
 replace_loc = {

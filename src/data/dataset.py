@@ -51,7 +51,10 @@ class ClientsDataset(Dataset):
             rating_vec = self.rating_vector[idx]
             c_vec = self.c_vecs[idx]
         item_feat = torch.tensor([rate[2:(2+self.n_item_feat)] for rate in user_rating_list])
-        user_feat = torch.tensor([rate[(-self.n_user_feat):] for rate in user_rating_list])
+        if self.n_user_feat > 0:
+            user_feat = torch.tensor([rate[(-self.n_user_feat):] for rate in user_rating_list])
+        else:
+            user_feat = torch.tensor([])
         return users, items, ratings, rating_vec, c_vec, item_feat, user_feat
 
 class DenoiseDataset(Dataset):

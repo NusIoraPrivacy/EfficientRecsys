@@ -133,11 +133,15 @@ def process_item_df(item_df, args):
             for j, cat in enumerate(all_categories):
                 if cat in cat_list:
                     category_mat[i,j] = 1
-        category_df = pd.DataFrame(category_mat, columns=all_categories)
+        all_categories = ["cat_"+str(s) for s in all_categories]
+        category_df = pd.DataFrame(category_mat, columns=all_categories, dtype=int)
+        category_df.index = item_df.index
         state_df = pd.get_dummies(item_df["State"], prefix="state", dtype=int)
         drop_cols = [col for col in item_df.columns if col != "ItemID"]
         item_df.drop(drop_cols, axis=1, inplace=True)
-        item_df = pd.concat([item_df, state_df], axis=1)
+        # print(item_df.shape, state_df.shape, category_df.shape)
+        item_df = pd.concat([item_df, state_df, category_df], axis=1)
+        # item_df = pd.concat([item_df, state_df], axis=1)
         return item_df
 
 def load_data(args):
@@ -221,8 +225,6 @@ def load_data(args):
         top_users = rating_df.groupby('UserID')['Rating'].count()
         top_users = top_users.sort_values(ascending=False)[:10000].index
         rating_df = rating_df[rating_df['UserID'].isin(top_users)]
-        top_items = rating_df.groupby('ItemID')['Rating'].count()
-        top_items = top_items.sort_values(ascending=False)[:50000].index
         item_path = f"{data_path}/yelp_academic_dataset_business.csv"
         item_df = pd.read_csv(item_path)
         item_df.columns = ["ItemID", "State", "is_open", "Categories"]
@@ -235,8 +237,8 @@ def load_data(args):
         item_df, user_df, rating_df = standard_id(item_df, user_df, rating_df)
         item_df = process_item_df(item_df, args)
         avg_user = rating_df.groupby("UserID")["Rating"].count()
-        print(avg_user.mean())
         combine_df = rating_df.merge(item_df, on="ItemID", how='left')
+        # print(combine_df[combine_df["cat_Trade Fairs"].isna()])
         avg_rating = combine_df["Rating"].mean()
         base_rmse = np.sqrt(((combine_df["Rating"] - avg_rating) ** 2).mean())
         print("baseline rmse:", base_rmse)

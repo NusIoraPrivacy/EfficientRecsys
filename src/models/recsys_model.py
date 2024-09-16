@@ -142,13 +142,10 @@ class FM(nn.Module):
             num_embeddings=num_users, embedding_dim=args.n_factors)
         self.embedding_item = nn.Embedding(
             num_embeddings=num_items, embedding_dim=args.n_factors)
-        self.embedding_user_feats = nn.Embedding(
-            num_embeddings=num_user_feats, embedding_dim=args.n_factors)
         self.embedding_item_feats = nn.Embedding(
             num_embeddings=num_item_feats, embedding_dim=args.n_factors)
         self.user_bias = nn.Parameter(torch.zeros(num_users))
         self.item_bias = nn.Parameter(torch.zeros(num_items))
-        self.user_feat_bias = nn.Parameter(torch.zeros(num_user_feats))
         self.item_feat_bias = nn.Parameter(torch.zeros(num_item_feats))
         self.offset = nn.Parameter(torch.zeros(1))
         self.args = args
@@ -160,8 +157,12 @@ class FM(nn.Module):
         self.n_max_user_feat = n_max_user_feat_dict[args.dataset]
         nn.init.kaiming_normal_(self.embedding_user.weight, mode='fan_out')
         nn.init.kaiming_normal_(self.embedding_item.weight, mode='fan_out')
-        nn.init.kaiming_normal_(self.embedding_user_feats.weight, mode='fan_out')
         nn.init.kaiming_normal_(self.embedding_item_feats.weight, mode='fan_out')
+        if num_user_feats > 0:
+            self.embedding_user_feats = nn.Embedding(
+                num_embeddings=num_user_feats, embedding_dim=args.n_factors)
+            self.user_feat_bias = nn.Parameter(torch.zeros(num_user_feats))
+            nn.init.kaiming_normal_(self.embedding_user_feats.weight, mode='fan_out')
     
     def add_noise(self, users_emb, noise_std, max_norm, user_feat=False):
         init_user_emb = copy.deepcopy(users_emb.data) # (item_size, n_features, dim)
@@ -187,22 +188,33 @@ class FM(nn.Module):
         user_embs = self.embedding_user(user_ids) # (item_size, 1, emb_dim)
         if noise_std > 0:
             user_embs, user_emb_noises, init_user_embs = self.add_noise(user_embs, noise_std, self.max_norm[0])
-        user_feat_embs = torch.einsum("ij, ki->kij", self.embedding_user_feats.weight, user_feats) # (item_size, num_feats, emb_dim)
-        if noise_std > 0:
-            user_feat_embs, user_feat_emb_noises, init_user_feat_embs = self.add_noise(user_feat_embs, noise_std, self.max_norm[1]/np.sqrt(self.n_max_user_feat), user_feat=True)
+        if self.num_user_feats > 0:
+            user_feat_embs = torch.einsum("ij, ki->kij", self.embedding_user_feats.weight, user_feats) # (item_size, num_feats, emb_dim)
+            if noise_std > 0:
+                user_feat_embs, user_feat_emb_noises, init_user_feat_embs = self.add_noise(user_feat_embs, noise_std, self.max_norm[1]/np.sqrt(self.n_max_user_feat), user_feat=True)
         item_ids = item_ids.unsqueeze(dim=1) # (item_size, 1)
         item_embs = self.embedding_item(item_ids) # (item_size, 1, emb_dim)
         item_feat_embs = torch.einsum("ij, ki->kij", self.embedding_item_feats.weight, item_feats) # (item_size, num_feats, emb_dim)
-        all_embs = torch.cat([user_embs, item_embs, user_feat_embs, item_feat_embs], dim=1) # (item_size, num_feats, emb_dim)
+        if self.num_user_feats > 0:
+            all_embs = torch.cat([user_embs, item_embs, user_feat_embs, item_feat_embs], dim=1) # (item_size, num_feats, emb_dim)
+        else:
+            all_embs = torch.cat([user_embs, item_embs, item_feat_embs], dim=1)
         pow_of_sum = all_embs.sum(dim=1).pow(2) # (item_size, emb_dim)
         sum_of_pow = all_embs.pow(2).sum(dim=1) # (item_size, emb_dim)
         fm_out = (pow_of_sum - sum_of_pow).sum(dim=-1)*0.5  # item_size
-        feat_bias = torch.cat([torch.einsum("i, ji->ji", self.user_feat_bias, user_feats), torch.einsum("i, ji->ji", self.item_feat_bias, item_feats)], dim=-1)
+        if self.num_user_feats > 0:
+            feat_bias = torch.cat([torch.einsum("i, ji->ji", self.user_feat_bias, user_feats), torch.einsum("i, ji->ji", self.item_feat_bias, item_feats)], dim=-1)
+        else:
+            feat_bias = torch.einsum("i, ji->ji", self.item_feat_bias, item_feats)
         x_biases = torch.cat([self.user_bias[user_ids], self.item_bias[item_ids], feat_bias], dim=-1).sum(1) # item_size
         fm_out +=  x_biases + self.offset # item_size
         if noise_std > 0:
-            noises = torch.cat([user_emb_noises, user_feat_emb_noises], dim=1)
-            init_users_emb = torch.cat([init_user_embs, init_user_feat_embs], dim=1)
+            if self.num_user_feats > 0:
+                noises = torch.cat([user_emb_noises, user_feat_emb_noises], dim=1)
+                init_users_emb = torch.cat([init_user_embs, init_user_feat_embs], dim=1)
+            else:
+                noises = user_emb_noises
+                init_users_emb = init_user_embs
             return fm_out, noises, init_users_emb
         return fm_out
 
@@ -220,13 +232,11 @@ class DeepFM(nn.Module):
             num_embeddings=num_users, embedding_dim=args.n_factors)
         self.embedding_item = nn.Embedding(
             num_embeddings=num_items, embedding_dim=args.n_factors)
-        self.embedding_user_feats = nn.Embedding(
-            num_embeddings=num_user_feats, embedding_dim=args.n_factors)
+        
         self.embedding_item_feats = nn.Embedding(
             num_embeddings=num_item_feats, embedding_dim=args.n_factors)
         self.user_bias = nn.Parameter(torch.zeros(num_users))
         self.item_bias = nn.Parameter(torch.zeros(num_items))
-        self.user_feat_bias = nn.Parameter(torch.zeros(num_user_feats))
         self.item_feat_bias = nn.Parameter(torch.zeros(num_item_feats))
         self.offset = nn.Parameter(torch.zeros(1))
         self.embed_output_dim = (2 + num_user_feats + num_item_feats) * args.n_factors
@@ -246,12 +256,17 @@ class DeepFM(nn.Module):
         self.num_items = num_items
         self.num_user_feats = num_user_feats
         self.num_item_feats = num_item_feats
-        self.max_norm = norm_dict["FM"]
+        self.max_norm = norm_dict["DeepFM"]
         self.n_max_user_feat = n_max_user_feat_dict[args.dataset]
         nn.init.kaiming_normal_(self.embedding_user.weight, mode='fan_out')
         nn.init.kaiming_normal_(self.embedding_item.weight, mode='fan_out')
-        nn.init.kaiming_normal_(self.embedding_user_feats.weight, mode='fan_out')
         nn.init.kaiming_normal_(self.embedding_item_feats.weight, mode='fan_out')
+
+        if num_user_feats > 0:
+            self.embedding_user_feats = nn.Embedding(
+                num_embeddings=num_user_feats, embedding_dim=args.n_factors)
+            self.user_feat_bias = nn.Parameter(torch.zeros(num_user_feats))
+            nn.init.kaiming_normal_(self.embedding_user_feats.weight, mode='fan_out')
 
     def add_noise(self, users_emb, noise_std, max_norm, user_feat=False):
         init_user_emb = copy.deepcopy(users_emb.data) # (item_size, n_features, dim)
@@ -277,25 +292,36 @@ class DeepFM(nn.Module):
         user_embs = self.embedding_user(user_ids) # (item_size, 1, emb_dim)
         if noise_std > 0:
             user_embs, user_emb_noises, init_user_embs = self.add_noise(user_embs, noise_std, self.max_norm[0])
-        user_feat_embs = torch.einsum("ij, ki->kij", self.embedding_user_feats.weight, user_feats) # (item_size, num_feats, emb_dim)
-        if noise_std > 0:
-            user_feat_embs, user_feat_emb_noises, init_user_feat_embs = self.add_noise(user_feat_embs, noise_std, self.max_norm[1]/np.sqrt(self.n_max_user_feat), user_feat=True)
+        if self.num_user_feats > 0:
+            user_feat_embs = torch.einsum("ij, ki->kij", self.embedding_user_feats.weight, user_feats) # (item_size, num_feats, emb_dim)
+            if noise_std > 0:
+                user_feat_embs, user_feat_emb_noises, init_user_feat_embs = self.add_noise(user_feat_embs, noise_std, self.max_norm[1]/np.sqrt(self.n_max_user_feat), user_feat=True)
         item_ids = item_ids.unsqueeze(dim=1) # (item_size, 1)
         item_embs = self.embedding_item(item_ids) # (item_size, 1, emb_dim)
         item_feat_embs = torch.einsum("ij, ki->kij", self.embedding_item_feats.weight, item_feats) # (item_size, num_feats, emb_dim)
-        all_embs = torch.cat([user_embs, item_embs, user_feat_embs, item_feat_embs], dim=1) # (item_size, num_feats, emb_dim)
+        if self.num_user_feats > 0:
+            all_embs = torch.cat([user_embs, item_embs, user_feat_embs, item_feat_embs], dim=1) # (item_size, num_feats, emb_dim)
+        else:
+            all_embs = torch.cat([user_embs, item_embs, item_feat_embs], dim=1) # (item_size, num_feats, emb_dim)
         pow_of_sum = all_embs.sum(dim=1).pow(2) # (item_size, emb_dim)
         sum_of_pow = all_embs.pow(2).sum(dim=1) # (item_size, emb_dim)
         fm_out = (pow_of_sum - sum_of_pow).sum(dim=-1)*0.5  # item_size
-        feat_bias = torch.cat([torch.einsum("i, ji->ji", self.user_feat_bias, user_feats), torch.einsum("i, ji->ji", self.item_feat_bias, item_feats)], dim=-1)
+        if self.num_user_feats > 0:
+            feat_bias = torch.cat([torch.einsum("i, ji->ji", self.user_feat_bias, user_feats), torch.einsum("i, ji->ji", self.item_feat_bias, item_feats)], dim=-1)
+        else:
+            feat_bias = torch.einsum("i, ji->ji", self.item_feat_bias, item_feats)
         x_biases = torch.cat([self.user_bias[user_ids], self.item_bias[item_ids], feat_bias], dim=-1).sum(1) # item_size
         fm_out +=  x_biases + self.offset # item_size
         all_embs = all_embs.view(-1, self.embed_output_dim) # (item_size, num_feats*emb_dim)
         dnn_out = self.mlp(all_embs).squeeze(-1)
         predictions = fm_out + dnn_out
         if noise_std > 0:
-            noises = torch.cat([user_emb_noises, user_feat_emb_noises], dim=1)
-            init_users_emb = torch.cat([init_user_embs, init_user_feat_embs], dim=1)
+            if self.num_user_feats > 0:
+                noises = torch.cat([user_emb_noises, user_feat_emb_noises], dim=1)
+                init_users_emb = torch.cat([init_user_embs, init_user_feat_embs], dim=1)
+            else:
+                noises = user_emb_noises
+                init_users_emb = init_user_embs
             return predictions, noises, init_users_emb
         return predictions
 

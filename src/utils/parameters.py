@@ -15,9 +15,9 @@ def get_args():
                         help = "dataset")
     parser.add_argument("--n_factors", type=int, default=8, 
                         help = "number of latent factors")
-    parser.add_argument("--l2_reg_u", type=float, default=0.01, 
+    parser.add_argument("--l2_reg_u", type=float, default=0.001, 
                         help = "weight on l2 regularization for user embedding")
-    parser.add_argument("--l2_reg_i", type=float, default=0.01, 
+    parser.add_argument("--l2_reg_i", type=float, default=0.001, 
                         help = "weight on l2 regularization for item embedding")
     # parser.add_argument("--alpha", type=float, default=500, 
     #                     help = "weight on non-zero ratings")

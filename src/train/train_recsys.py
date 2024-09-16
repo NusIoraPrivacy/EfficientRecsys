@@ -25,6 +25,9 @@ def test_model(model, user_id_list, item_id_list, test_dataset, args):
             except KeyError:
                 continue
             if len(this_users) > 0:
+                if args.model in models_w_feats:
+                    user_feat = user_feat.to(args.device)
+                    item_feat = item_feat.to(args.device)
                 pred = model(this_users, this_items, user_feats=user_feat, item_feats=item_feat)
                 # obtain rmse
                 real_label.extend(true_rating.tolist())
@@ -40,11 +43,11 @@ def train_fl_model(user_id_list, item_id_list, train_dataset, test_dataset, mode
     uid_seq = DataLoader(ClientsSampler(n_users), batch_size=args.batch_size, shuffle=True)
     milestones = [args.epochs*i//10 for i in range(1, 10)]
     user_optimizers = [torch.optim.Adam(model.parameters(), betas=(0.9, 0.99), lr=args.lr) for i in range(n_users)]
-    # user_schedulers = [torch.optim.lr_scheduler.MultiStepLR(user_optimizers[i], milestones=milestones, gamma=0.5) for i in range(n_users)]
+    user_schedulers = [torch.optim.lr_scheduler.MultiStepLR(user_optimizers[i], milestones=milestones, gamma=0.5) for i in range(n_users)]
     total_rounds = args.epochs*len(uid_seq)
     milestones = [total_rounds*i//10 for i in range(1, 10)]
     server_optimizer = torch.optim.Adam(model.parameters(), betas=(0.9, 0.99), lr=args.lr)
-    # server_scheduler = torch.optim.lr_scheduler.MultiStepLR(server_optimizer, milestones=milestones, gamma=0.5)
+    server_scheduler = torch.optim.lr_scheduler.MultiStepLR(server_optimizer, milestones=milestones, gamma=0.5)
 
     best_rmse = 100
     best_model = copy.deepcopy(model)
@@ -71,6 +74,8 @@ def train_fl_model(user_id_list, item_id_list, train_dataset, test_dataset, mode
                     # print("embedding before update:", model.embedding_user.weight[i])
                     try:
                         this_users, this_items, true_rating, rating_vec, c_vec, item_feat, user_feat = train_dataset[i]
+                        # print("Item features:", item_feat)
+                        # print("User features:", user_feat)
                         n_train_users += 1
                     except KeyError:
                         continue
@@ -148,7 +153,6 @@ def train_fl_model(user_id_list, item_id_list, train_dataset, test_dataset, mode
                 n_rounds += 1
                 loss_list.append(loss)
             mse, rmse, mae = test_model(model, user_id_list, item_id_list, test_dataset, args)
-            loss = np.mean(loss_list)
             pbar.set_postfix(loss=loss, rmse=rmse, mse=mse, mae=mae, best_rmse=best_rmse)
             if rmse < best_rmse:
                 best_rmse = rmse
