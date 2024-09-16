@@ -11,6 +11,7 @@ from scipy.sparse.linalg import spsolve
 from utils.globals import private_param_dict, models_w_feats
 from torch.utils.data import DataLoader
 from data.dataset import ClientsSampler
+import time
 
 def test_model(model, user_id_list, item_id_list, test_dataset, args):
     prediction = []
@@ -126,10 +127,8 @@ def train_fl_model(user_id_list, item_id_list, train_dataset, test_dataset, mode
                                 param.grad = private_grads[name]
                         user_optimizers[i].step()
                         # user_schedulers[i].step()
-                        torch.cuda.empty_cache()
                     user_optimizers[i].zero_grad()
                     # print("embedding after update:", model.embedding_user.weight[i])
-
                 # Server update
                 server_optimizer.zero_grad()
                 for name, param in model.named_parameters():

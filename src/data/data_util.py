@@ -63,6 +63,15 @@ def train_test_split(ratings_dict, args, item_id_list=None):
 
     return train_data, test_data
 
+def train_test_split_central(ratings_df, args):
+    ratings_df = ratings_df.sample(frac=1)
+    n_test = int(args.test_pct * len(ratings_df))
+    rating_mat = ratings_df.values
+    rating_mat = rating_mat.tolist()
+    train_data = rating_mat[:-n_test]
+    test_data = rating_mat[-n_test:]
+    return train_data, test_data
+
 def genre_to_onehot(item_df, args):
     genre_array = item_df["Genres"].values
     # all_genre = []
@@ -204,6 +213,7 @@ def load_data(args):
         item_df, user_df, rating_df = standard_id(item_df, user_df, rating_df)
         rating_per_user = rating_df.groupby("UserID")["Rating"].count()
         combine_df = rating_df.merge(item_df, on="ItemID", how='left')
+        combine_df.drop("Timestamp", axis=1, inplace=True)
         return item_df, user_df, combine_df
     
     if args.dataset == "ml-20m":

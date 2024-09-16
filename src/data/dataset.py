@@ -57,6 +57,28 @@ class ClientsDataset(Dataset):
             user_feat = torch.tensor([])
         return users, items, ratings, rating_vec, c_vec, item_feat, user_feat
 
+class CentralDataset(Dataset):
+    def __init__(self, data_values, n_user_feat, n_item_feat, args):
+        self.data_values = data_values
+        self.args = args
+        self.n_user_feat = n_user_feat
+        self.n_item_feat = n_item_feat
+
+    def __len__(self):
+        return len(self.data_values)
+
+    def __getitem__(self, idx):
+        user_rating_list = self.data_values[idx]
+        user = torch.tensor(user_rating_list[0], dtype=int)
+        item = torch.tensor(user_rating_list[1], dtype=int)
+        rating = torch.tensor(user_rating_list[2])
+        item_feat = torch.tensor(user_rating_list[2:(2+self.n_item_feat)], dtype=int)
+        if self.n_user_feat > 0:
+            user_feat = torch.tensor(user_rating_list[(-self.n_user_feat):])
+        else:
+            user_feat = torch.tensor([])
+        return user, item, rating, item_feat, user_feat
+
 class DenoiseDataset(Dataset):
     def __init__(self, data_dict, base_model, n_users, n_items, n_user_feat, n_item_feat, args, max_item=150):
         self.base_model = base_model

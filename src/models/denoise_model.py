@@ -168,19 +168,6 @@ class FM_d(nn.Module):
         pos_terms = all_noisy_embs.sum(2).pow(2)
         neg_terms = all_noisy_embs.pow(2).sum(2)
         denoise_output = self.p1 * denoise_output + self.p2 * ratings + self.p3 * (pos_terms-neg_terms).sum(-1)*0.5
-        # user_item = torch.cat([all_user_embs, all_item_embs], dim=2)
-        # user_item = (user_item.sum(2).pow(2) - user_item.pow(2).sum(2)).sum(-1)*0.5
-        # user_noise = torch.cat([all_user_embs, all_noises], dim=2)
-        # user_noise = (user_noise.sum(2).pow(2) - user_noise.pow(2).sum(2)).sum(-1)*0.5
-        # item_noise = torch.cat([all_item_embs, all_noises], dim=2)
-        # item_noise = (item_noise.sum(2).pow(2) - item_noise.pow(2).sum(2)).sum(-1)*0.5
-        # all_inputs = torch.cat([all_user_embs, all_item_embs, all_noises], dim=2) # batch size, item size, num_feat, dim
-        # bz, item_size, n_feats, n_dim = all_inputs.shape
-        # all_inputs = all_inputs.view(bz, item_size, n_feats * n_dim)
-        # denoise_output = self.hidden_layers(all_inputs)
-        # denoise_output = denoise_output.squeeze(-1)
-        # denoise_output = self.p1 * ratings + self.p2 * denoise_output + self.p3 * user_item + self.p4 * user_noise + self.p5 * item_noise
-        # denoise_output = self.p1 * item_noise + self.p2 * user_noise + self.p3 * user_item + self.p4 * ratings
         return denoise_output
 
     def get_loss(self, true_preds, denoise_preds, mask=None):

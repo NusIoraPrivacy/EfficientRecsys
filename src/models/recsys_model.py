@@ -50,6 +50,13 @@ class MF(nn.Module):
             loss += reg_loss
         return loss
 
+    def get_loss_central(self, ratings, predictions):
+        loss = torch.mean((ratings - predictions) ** 2)
+        if self.args.regularization:
+            reg_loss = self.embedding_user.weight.norm(2).pow(2) * self.args.l2_reg_u + self.embedding_item.weight.norm(2).pow(2) * self.args.l2_reg_i
+            loss += reg_loss
+        return loss
+
 # neural collaborative filtering
 class NCF(nn.Module):
     def __init__(self, num_users, num_items, args, **kwargs):
