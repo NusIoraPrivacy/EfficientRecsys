@@ -11,7 +11,6 @@ import random
 def test_model(model, test_loader, args, denoise=False, denoise_model=None):
     prediction = []
     real_label = []
-    sensitivities = norm_dict[args.model]
     # testing
     with torch.no_grad():
         for batch in test_loader:
@@ -66,7 +65,7 @@ def train_demod(user_id_list, item_id_list, train_loader, test_loader, base_mode
                         if patience == 0:
                             finish = True
                             break
-                pbar.set_postfix(loss=loss.item(), rmse=rmse, mse=mse, mae=mae)
+                pbar.set_postfix(loss=loss.item(), best_rmse=best_rmse, rmse=rmse, mse=mse, mae=mae)
                 n_rounds += 1
     print("Best rmse:", best_rmse)
     save_dir = f"{args.root_path}/model/{args.dataset}/{args.model}"

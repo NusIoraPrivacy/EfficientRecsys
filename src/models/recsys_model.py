@@ -16,7 +16,7 @@ class MF(nn.Module):
         self.args = args
         self.num_users = num_users
         self.num_items = num_items
-        self.max_norm = norm_dict["MF"]
+        self.max_norm = norm_dict[args.dataset]["MF"]
         nn.init.kaiming_normal_(self.embedding_user.weight, mode='fan_out')
         nn.init.kaiming_normal_(self.embedding_item.weight, mode='fan_out')
 
@@ -82,7 +82,7 @@ class NCF(nn.Module):
         self.args = args
         self.num_users = num_users
         self.num_items = num_items
-        self.max_norm = norm_dict["NCF"]
+        self.max_norm = norm_dict[args.dataset]["NCF"]
         self.init_embedding()
         self.ncf_hidden_layers.apply(self.init_layer)
         self.output_layer.apply(self.init_layer)
@@ -160,7 +160,7 @@ class FM(nn.Module):
         self.num_items = num_items
         self.num_user_feats = num_user_feats
         self.num_item_feats = num_item_feats
-        self.max_norm = norm_dict["FM"]
+        self.max_norm = norm_dict[args.dataset]["FM"]
         self.n_max_user_feat = n_max_user_feat_dict[args.dataset]
         nn.init.kaiming_normal_(self.embedding_user.weight, mode='fan_out')
         nn.init.kaiming_normal_(self.embedding_item.weight, mode='fan_out')
@@ -263,7 +263,7 @@ class DeepFM(nn.Module):
         self.num_items = num_items
         self.num_user_feats = num_user_feats
         self.num_item_feats = num_item_feats
-        self.max_norm = norm_dict["DeepFM"]
+        self.max_norm = norm_dict[args.dataset]["DeepFM"]
         self.n_max_user_feat = n_max_user_feat_dict[args.dataset]
         nn.init.kaiming_normal_(self.embedding_user.weight, mode='fan_out')
         nn.init.kaiming_normal_(self.embedding_item.weight, mode='fan_out')

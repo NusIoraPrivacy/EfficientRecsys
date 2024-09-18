@@ -4,6 +4,7 @@ import random
 from tqdm import tqdm
 from utils.globals import *
 import json
+from collections import defaultdict
 
 def standard_id(item_df, user_df, rating_df):
     userIDs = user_df.UserID.unique()
@@ -62,6 +63,18 @@ def train_test_split(ratings_dict, args, item_id_list=None):
             test_data[user_id] = rating_list[-test_num:]
 
     return train_data, test_data
+
+def sample_item_central(train_data, args):
+    random.shuffle(train_data)
+    sample_train_data = []
+    n_per_user = defaultdict(int)
+    for rating_vector in train_data:
+        user = rating_vector[0]
+        if n_per_user[user] < args.n_sample_items:
+            n_per_user[user] += 1
+            sample_train_data.append(rating_vector)
+    avg_n_per_u = sum(n_per_user.values()) / len(n_per_user) 
+    return sample_train_data, avg_n_per_u
 
 def train_test_split_central(ratings_df, args):
     ratings_df = ratings_df.sample(frac=1)

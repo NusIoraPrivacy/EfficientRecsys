@@ -32,16 +32,37 @@ if __name__ == "__main__":
                 batch_size=args.d_batch_size, 
                 shuffle=True
                 )
+    # obtain the performance without noise
+    test_dataset = DenoiseDataset(test_data, base_model, n_users, n_items, n_user_feat, n_item_feat, args, max_item=args.max_items, noise=False)
+    test_loader = DataLoader(
+                test_dataset, 
+                batch_size=args.d_batch_size, 
+                shuffle=False
+                )
+    
+    mse, rmse, mae = test_model(base_model, test_loader, args, denoise=False)
+    print(f"Performance without noise: RMSE: {rmse}, MSE: {mse}, MAE: {mae}")
+
+    # obtain the performance before denoise
     test_dataset = DenoiseDataset(test_data, base_model, n_users, n_items, n_user_feat, n_item_feat, args, max_item=args.max_items)
     test_loader = DataLoader(
                 test_dataset, 
                 batch_size=args.d_batch_size, 
                 shuffle=False
                 )
-    # obtain the performance before denoise
     mse, rmse, mae = test_model(base_model, test_loader, args, denoise=False)
-    print(f"RMSE: {rmse}, MSE: {mse}, MAE: {mae}")
+    print(f"Performance for noise without denoise: RMSE: {rmse}, MSE: {mse}, MAE: {mae}")
     # all_norms = torch.norm(base_model.embedding_user.weight, p=2, dim=-1)
+    # print("average:", torch.mean(all_norms))
+    # print("std:", torch.std(all_norms))
+    # print("max:", torch.max(all_norms))
+    # print("99%:", torch.quantile(all_norms, 0.99))
+    # all_norms = torch.norm(base_model.gmf_embedding_user.weight, p=2, dim=-1)
+    # print("average:", torch.mean(all_norms))
+    # print("std:", torch.std(all_norms))
+    # print("max:", torch.max(all_norms))
+    # print("99%:", torch.quantile(all_norms, 0.99))
+    # all_norms = torch.norm(base_model.ncf_embedding_user.weight, p=2, dim=-1)
     # print("average:", torch.mean(all_norms))
     # print("std:", torch.std(all_norms))
     # print("max:", torch.max(all_norms))

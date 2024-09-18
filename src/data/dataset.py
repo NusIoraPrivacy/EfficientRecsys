@@ -80,7 +80,7 @@ class CentralDataset(Dataset):
         return user, item, rating, item_feat, user_feat
 
 class DenoiseDataset(Dataset):
-    def __init__(self, data_dict, base_model, n_users, n_items, n_user_feat, n_item_feat, args, max_item=150):
+    def __init__(self, data_dict, base_model, n_users, n_items, n_user_feat, n_item_feat, args, max_item=150, noise=True):
         self.base_model = base_model
         self.data_dict = data_dict
         self.args = args
@@ -89,14 +89,18 @@ class DenoiseDataset(Dataset):
         self.max_item = max_item
         self.n_user_feat = n_user_feat
         self.n_item_feat = n_item_feat
-        self.sensitivity = norm_dict[args.model]
+        self.sensitivity = norm_dict[args.dataset][args.model]
+        self.noise = noise
 
     def __len__(self):
         return len(self.data_dict)
 
     def __getitem__(self, idx):
         # prepare ids and ratings
-        user_rating_list = self.data_dict[idx]
+        try:
+            user_rating_list = self.data_dict[idx]
+        except:
+            return self.__getitem__(idx+1)
         user_ids = torch.tensor([idx] * self.max_item).to(self.args.device)
         item_ids = [rate[0] for rate in user_rating_list][:self.max_item] + [-1] * (self.max_item-len(user_rating_list))
         item_ids = torch.tensor(item_ids).to(self.args.device)
@@ -106,8 +110,16 @@ class DenoiseDataset(Dataset):
         ratings = torch.tensor(ratings).to(self.args.device)
         item_feat = [rate[2:(2+self.n_item_feat)] for rate in user_rating_list][:self.max_item] + [[0]*self.n_item_feat] * (self.max_item-len(user_rating_list))
         item_feat = torch.tensor(item_feat).to(self.args.device) # (bs, item_size, feat num)
-        user_feat = [rate[(-self.n_user_feat):] for rate in user_rating_list][:self.max_item] + [[0]*self.n_user_feat] * (self.max_item-len(user_rating_list))
-        user_feat = torch.tensor(user_feat).to(self.args.device)
-        sigma = get_noise_std(self.sensitivity, self.args)
-        noise_predictions, noises, init_user_embs = self.base_model(user_ids, item_ids, user_feats=user_feat, item_feats=item_feat, noise_std=sigma)
-        return noise_predictions, noises[0], init_user_embs[0], item_ids, ratings, masks, item_feat
+        if self.n_user_feat > 0:
+            user_feat = [rate[(-self.n_user_feat):] for rate in user_rating_list][:self.max_item] + [[0]*self.n_user_feat] * (self.max_item-len(user_rating_list))
+            user_feat = torch.tensor(user_feat).to(self.args.device)
+        else:
+            user_feat = torch.tensor([]).to(self.args.device)
+        if self.noise:
+            sigma = get_noise_std(self.sensitivity, self.args)
+            predictions, noises, init_user_embs = self.base_model(user_ids, item_ids, user_feats=user_feat, item_feats=item_feat, noise_std=sigma)
+            noises, init_user_embs = noises[0], init_user_embs[0]
+        else:
+            predictions = self.base_model(user_ids, item_ids, user_feats=user_feat, item_feats=item_feat)
+            noises,  init_user_embs = torch.tensor([]), torch.tensor([])
+        return predictions, noises,  init_user_embs, item_ids, ratings, masks, item_feat

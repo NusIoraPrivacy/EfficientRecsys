@@ -5,13 +5,13 @@ class MF_d(nn.Module):
     def __init__(self, num_users, num_items, emb_dim, args, **kwargs):
         super(MF_d, self).__init__()
         self.embedding_item = nn.Embedding(
-            num_embeddings=num_items, embedding_dim=4)
+            num_embeddings=num_items, embedding_dim=args.d_dim)
         self.layer1 = nn.Sequential(
-            nn.Linear(emb_dim, 4),
+            nn.Linear(emb_dim, args.d_dim),
             # nn.ReLU(),
         )
         self.layer2 = nn.Sequential(
-            nn.Linear(emb_dim, 4),
+            nn.Linear(emb_dim, args.d_dim),
             # nn.ReLU(),
         )
         self.p = nn.Parameter(torch.tensor([1.0]))
@@ -49,18 +49,18 @@ class NCF_d(nn.Module):
     def __init__(self, num_users, num_items, emb_dim, args, **kwargs):
         super(NCF_d, self).__init__()
         self.gmf_embedding_item = nn.Embedding(
-            num_embeddings=num_items, embedding_dim=4)
+            num_embeddings=num_items, embedding_dim=args.d_dim)
         self.ncf_embedding_item = nn.Embedding(
-            num_embeddings=num_items, embedding_dim=4)
-        self.lin_layers = nn.ModuleList([nn.Linear(emb_dim//2, 4) for i in range(4)])
+            num_embeddings=num_items, embedding_dim=args.d_dim)
+        self.lin_layers = nn.ModuleList([nn.Linear(emb_dim//2, args.d_dim) for i in range(4)])
         self.p = nn.Parameter(torch.tensor([1.0]))
         self.lin_layers.apply(self.init_layer)
         self.ncf_layers = nn.Sequential(
-            nn.Linear(3 * 4, 2 * 4),
+            nn.Linear(3 * args.d_dim, 2 * args.d_dim),
             nn.ReLU(),
             )
         self.final_layer = nn.Sequential(
-            nn.Linear(4 * 4, 1),
+            nn.Linear(4 * args.d_dim, 1),
             )
         self.args = args
         self.num_users = num_users
@@ -111,21 +111,13 @@ class FM_d(nn.Module):
     def __init__(self, num_users, num_items, num_user_feats, num_item_feats, emb_dim, args):
         super(FM_d, self).__init__()
         self.embedding_item = nn.Embedding(
-            num_embeddings=num_items, embedding_dim=6)
+            num_embeddings=num_items, embedding_dim=args.d_dim)
         self.embedding_item_feats = nn.Embedding(
-            num_embeddings=num_item_feats, embedding_dim=6)
-        self.lin_layers = nn.ModuleList([nn.Linear(emb_dim, 6) for i in range(4)])
-        # self.embed_output_dim = (3 + 2*num_user_feats + num_item_feats) * 4
-        # self.hidden_layers = nn.Sequential(
-        #     nn.Linear(self.embed_output_dim, 2 * 4),
-        #     nn.ReLU(),
-        #     nn.Linear(2 * 4, 1),
-        #     )
+            num_embeddings=num_item_feats, embedding_dim=args.d_dim)
+        self.lin_layers = nn.ModuleList([nn.Linear(emb_dim, args.d_dim) for i in range(4)])
         self.p1 = nn.Parameter(torch.tensor([1.0]))
         self.p2 = nn.Parameter(torch.tensor([0.0]))
         self.p3 = nn.Parameter(torch.tensor([0.0]))
-        # self.p4 = nn.Parameter(torch.tensor([0.0]))
-        # self.p5 = nn.Parameter(torch.tensor([0.0]))
         nn.init.kaiming_normal_(self.embedding_item.weight, mode='fan_out')
         nn.init.kaiming_normal_(self.embedding_item_feats.weight, mode='fan_out')
         self.lin_layers.apply(self.init_layer)

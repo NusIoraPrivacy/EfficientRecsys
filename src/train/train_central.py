@@ -10,7 +10,8 @@ import scipy.sparse as sp
 from scipy.sparse.linalg import spsolve
 from utils.globals import private_param_dict, models_w_feats
 from torch.utils.data import DataLoader
-from data.dataset import ClientsSampler
+from data.dataset import CentralDataset
+from data.data_util import sample_item_central
 
 def test_model(model, test_loader, args):
     prediction = []
@@ -32,10 +33,15 @@ def test_model(model, test_loader, args):
         mse, rmse, mae = cal_metrics(prediction, real_label, args)
     return mse, rmse, mae
 
-def train_centralize_model(n_users, n_items, train_dataset, test_dataset, model, args):
+def train_centralize_model(n_users, n_items, n_user_feat, n_item_feat, train_data, test_data, model, args):
     model = model.to(args.device)
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, pin_memory=True) # 50000
-    test_loader = DataLoader(test_dataset, batch_size=args.batch_size * 5, pin_memory=True)
+    train_data, avg_n_per_u = sample_item_central(train_data, args)
+    print(avg_n_per_u)
+    train_dataset = CentralDataset(train_data, n_user_feat, n_item_feat, args)
+    test_dataset = CentralDataset(test_data, n_user_feat, n_item_feat, args)
+    train_batch_size = int(args.batch_size * avg_n_per_u)
+    train_loader = DataLoader(train_dataset, batch_size=train_batch_size, shuffle=True, pin_memory=True) # 50000
+    test_loader = DataLoader(test_dataset, batch_size=50000 * 5, pin_memory=True)
     print(len(train_loader), len(test_loader))
     total_rounds = args.epochs*len(train_loader)
     optimizer = torch.optim.Adam(model.parameters(), betas=(0.9, 0.99), lr=args.lr)
@@ -51,6 +57,10 @@ def train_centralize_model(n_users, n_items, train_dataset, test_dataset, model,
     finish = False
     with tqdm(total=total_rounds) as pbar:
         for epoch in range(args.epochs):
+            if epoch > 0:
+                train_data, _ = sample_item_central(train_data, args)
+                train_dataset = CentralDataset(train_data, n_user_feat, n_item_feat, args)
+                train_loader = DataLoader(train_dataset, batch_size=train_batch_size, shuffle=True, pin_memory=True) # 50000
             loss_list = []
             for batch in train_loader:
                 # User updates
