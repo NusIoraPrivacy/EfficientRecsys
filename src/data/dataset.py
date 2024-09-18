@@ -72,7 +72,7 @@ class CentralDataset(Dataset):
         user = torch.tensor(user_rating_list[0], dtype=int)
         item = torch.tensor(user_rating_list[1], dtype=int)
         rating = torch.tensor(user_rating_list[2])
-        item_feat = torch.tensor(user_rating_list[2:(2+self.n_item_feat)], dtype=int)
+        item_feat = torch.tensor(user_rating_list[3:(3+self.n_item_feat)], dtype=int)
         if self.n_user_feat > 0:
             user_feat = torch.tensor(user_rating_list[(-self.n_user_feat):])
         else:
@@ -86,7 +86,14 @@ class DenoiseDataset(Dataset):
         self.args = args
         self.n_users = n_users
         self.n_items = n_items
-        self.max_item = max_item
+        if max_item is None:
+            max_item = 0
+            for user in self.data_dict:
+                user_rating_list = self.data_dict[user]
+                max_item = max(max_item, len(user_rating_list))
+            self.max_item = max_item
+        else:
+            self.max_item = max_item
         self.n_user_feat = n_user_feat
         self.n_item_feat = n_item_feat
         self.sensitivity = norm_dict[args.dataset][args.model]
@@ -101,6 +108,8 @@ class DenoiseDataset(Dataset):
             user_rating_list = self.data_dict[idx]
         except:
             return self.__getitem__(idx+1)
+        user_rating_list = user_rating_list.copy()
+        random.shuffle(user_rating_list)
         user_ids = torch.tensor([idx] * self.max_item).to(self.args.device)
         item_ids = [rate[0] for rate in user_rating_list][:self.max_item] + [-1] * (self.max_item-len(user_rating_list))
         item_ids = torch.tensor(item_ids).to(self.args.device)
@@ -121,5 +130,5 @@ class DenoiseDataset(Dataset):
             noises, init_user_embs = noises[0], init_user_embs[0]
         else:
             predictions = self.base_model(user_ids, item_ids, user_feats=user_feat, item_feats=item_feat)
-            noises,  init_user_embs = torch.tensor([]), torch.tensor([])
+            noises, init_user_embs = torch.tensor([]), torch.tensor([])
         return predictions, noises,  init_user_embs, item_ids, ratings, masks, item_feat

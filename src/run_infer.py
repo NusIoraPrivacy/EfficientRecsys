@@ -73,6 +73,10 @@ if __name__ == "__main__":
     # print("max:", torch.max(all_norms))
     # print("99%:", torch.quantile(all_norms, 0.99))
     # initialize a denoise model
+    # print("max:", base_model.user_bias.max())
+    # print("99%:", torch.quantile(base_model.user_bias, 0.99))
+    # print("min:", base_model.user_bias.min())
+    # print("1%:", torch.quantile(base_model.user_bias, 0.01))
     emb_dim = get_emb_size(base_model, args)
     denoise_model = eval(f"{args.model}_d")(num_users=n_users, num_items=n_items, num_user_feats=n_user_feat, num_item_feats=n_item_feat, emb_dim=emb_dim, args=args)
     denoise_model = denoise_model.to(args.device)

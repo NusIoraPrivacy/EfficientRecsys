@@ -15,10 +15,11 @@ class MF_d(nn.Module):
             # nn.ReLU(),
         )
         self.item_bias = nn.Parameter(torch.zeros(num_items))
-        self.p1 = nn.Parameter(torch.tensor([1.0]))
-        # self.p2 = nn.Parameter(torch.tensor([1.0]))
-        # self.p3 = nn.Parameter(torch.tensor([1.0]))
-        # self.p4 = nn.Parameter(torch.tensor([1.0]))
+        self.p1 = nn.Parameter(torch.tensor([0.0]))
+        self.p2 = nn.Parameter(torch.tensor([0.0]))
+        self.p3 = nn.Parameter(torch.tensor([1.0]))
+        self.p4 = nn.Parameter(torch.tensor([1.0]))
+        self.p5 = nn.Parameter(torch.tensor([1.0]))
         self.args = args
         self.num_users = num_users
         self.num_items = num_items
@@ -33,11 +34,14 @@ class MF_d(nn.Module):
     def forward(self, ratings, item_ids, noise, init_user_emb, **kwargs):
         item_embs = self.embedding_item(item_ids) # (batch size, item size, reduce dim)
         noise = self.layer1(noise) # (batch size, reduce dim)
+        init_user_emb, user_bias = torch.split(init_user_emb, [self.args.n_factors, 1], dim=-1)
+        # print(user_bias.shape)
+        # print(init_user_emb.shape)
         user_emb = self.layer2(init_user_emb) # (batch size, reduce dim)
         noise = torch.einsum("ijk, ik->ij", item_embs, noise) # (batch size, item size)
         user_emb = torch.einsum("ijk, ik->ij", item_embs, user_emb) # (batch size, item size)
-        # item_bias = self.item_bias[item_ids]
-        denoise_output = self.p1 * ratings + noise + user_emb # (batch size, item size)
+        item_bias = self.item_bias[item_ids]
+        denoise_output = self.p1 * ratings + self.p2 * noise + self.p3 * user_emb + self.p4 * user_bias + self.p5 * item_bias # (batch size, item size)
         return denoise_output
 
     def get_loss(self, true_preds, denoise_preds, mask=None):
@@ -119,10 +123,12 @@ class FM_d(nn.Module):
             num_embeddings=num_items, embedding_dim=args.d_dim)
         self.embedding_item_feats = nn.Embedding(
             num_embeddings=num_item_feats, embedding_dim=args.d_dim)
+        self.item_bias = nn.Parameter(torch.zeros(num_items))
         self.lin_layers = nn.ModuleList([nn.Linear(emb_dim, args.d_dim) for i in range(4)])
         self.p1 = nn.Parameter(torch.tensor([1.0]))
         self.p2 = nn.Parameter(torch.tensor([0.0]))
         self.p3 = nn.Parameter(torch.tensor([0.0]))
+        self.p4 = nn.Parameter(torch.tensor([1.0]))
         nn.init.kaiming_normal_(self.embedding_item.weight, mode='fan_out')
         nn.init.kaiming_normal_(self.embedding_item_feats.weight, mode='fan_out')
         self.lin_layers.apply(self.init_layer)
@@ -142,8 +148,8 @@ class FM_d(nn.Module):
     def forward(self, ratings, item_ids, noise, init_user_emb, item_feat):
         item_size = item_ids.shape[-1]
         # transform raw user embedding and noises
-        init_user_embs, init_user_feat_embs = torch.split(init_user_emb, [1, self.num_user_feats], dim=1) # batch size, num_feat, dim
-        user_emb_noises, user_feat_emb_noises = torch.split(noise, [1, self.num_user_feats], dim=1) # batch size, num_feat, dim
+        init_user_embs, init_user_feat_embs, init_user_bias = torch.split(init_user_emb, [1, self.num_user_feats, 1], dim=1) # batch size, num_feat, dim
+        user_emb_noises, user_feat_emb_noises, user_bias_noise = torch.split(noise, [1, self.num_user_feats, 1], dim=1) # batch size, num_feat, dim
         init_user_embs = self.lin_layers[0](init_user_embs)
         init_user_feat_embs = self.lin_layers[1](init_user_feat_embs)
         user_emb_noises = self.lin_layers[2](user_emb_noises)
@@ -152,6 +158,8 @@ class FM_d(nn.Module):
         all_noises = torch.cat([user_emb_noises, user_feat_emb_noises], dim=1)  # batch size, num_feat, dim
         all_user_embs = all_user_embs.unsqueeze(1).repeat(1, item_size, 1, 1)  # batch size, item size num_feat, dim
         all_noises = all_noises.unsqueeze(1).repeat(1, item_size, 1, 1) # batch size, item size, num_feat, dim
+        # obatin bias term
+        x_bias = self.item_bias[item_ids] + init_user_bias[:, :, 0]
         # obtain item embs
         item_ids = item_ids.unsqueeze(-1)
         item_embs = self.embedding_item(item_ids) # batch size, item size, 1, dim
@@ -164,7 +172,9 @@ class FM_d(nn.Module):
         all_noisy_embs = torch.cat([all_user_embs+all_noises, all_item_embs], dim=2)
         pos_terms = all_noisy_embs.sum(2).pow(2)
         neg_terms = all_noisy_embs.pow(2).sum(2)
-        denoise_output = self.p1 * denoise_output + self.p2 * ratings + self.p3 * (pos_terms-neg_terms).sum(-1)*0.5
+        
+        denoise_output = self.p1 * denoise_output + self.p2 * ratings + self.p3 * (pos_terms-neg_terms).sum(-1)*0.5\
+                         + self.p4 * x_bias
         return denoise_output
 
     def get_loss(self, true_preds, denoise_preds, mask=None):
