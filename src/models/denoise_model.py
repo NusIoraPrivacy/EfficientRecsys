@@ -14,7 +14,11 @@ class MF_d(nn.Module):
             nn.Linear(emb_dim, args.d_dim),
             # nn.ReLU(),
         )
-        self.p = nn.Parameter(torch.tensor([1.0]))
+        self.item_bias = nn.Parameter(torch.zeros(num_items))
+        self.p1 = nn.Parameter(torch.tensor([1.0]))
+        # self.p2 = nn.Parameter(torch.tensor([1.0]))
+        # self.p3 = nn.Parameter(torch.tensor([1.0]))
+        # self.p4 = nn.Parameter(torch.tensor([1.0]))
         self.args = args
         self.num_users = num_users
         self.num_items = num_items
@@ -32,7 +36,8 @@ class MF_d(nn.Module):
         user_emb = self.layer2(init_user_emb) # (batch size, reduce dim)
         noise = torch.einsum("ijk, ik->ij", item_embs, noise) # (batch size, item size)
         user_emb = torch.einsum("ijk, ik->ij", item_embs, user_emb) # (batch size, item size)
-        denoise_output = self.p * ratings + noise + user_emb # (batch size, item size)
+        # item_bias = self.item_bias[item_ids]
+        denoise_output = self.p1 * ratings + noise + user_emb # (batch size, item size)
         return denoise_output
 
     def get_loss(self, true_preds, denoise_preds, mask=None):
@@ -41,7 +46,7 @@ class MF_d(nn.Module):
             loss = loss.sum() / mask.sum()
         else:
             loss = torch.mean((true_preds - denoise_preds) ** 2)
-        reg_loss = self.embedding_item.weight.norm(2).pow(2)/self.num_items
+        reg_loss = self.embedding_item.weight.norm(2).pow(2) * self.args.l2_reg_i
         loss += reg_loss
         return loss
 
@@ -102,7 +107,7 @@ class NCF_d(nn.Module):
             loss = loss.sum() / mask.sum()
         else:
             loss = torch.mean((true_preds - denoise_preds) ** 2)
-        reg_loss = (self.gmf_embedding_item.weight.norm(2).pow(2)+self.ncf_embedding_item.weight.norm(2).pow(2))/self.num_items
+        reg_loss = (self.gmf_embedding_item.weight.norm(2).pow(2)+self.ncf_embedding_item.weight.norm(2).pow(2)) * self.args.l2_reg_i
         loss += reg_loss
         return loss
         
@@ -168,7 +173,7 @@ class FM_d(nn.Module):
             loss = loss.sum() / mask.sum()
         else:
             loss = torch.mean((true_preds - denoise_preds) ** 2)
-        reg_loss = (self.embedding_item.weight.norm(2).pow(2)+self.embedding_item_feats.weight.norm(2).pow(2))/self.num_items
+        reg_loss = (self.embedding_item.weight.norm(2).pow(2)+self.embedding_item_feats.weight.norm(2).pow(2))  * self.args.l2_reg_i
         loss += reg_loss
         return loss
 
@@ -250,6 +255,6 @@ class DeepFM_d(nn.Module):
             loss = loss.sum() / mask.sum()
         else:
             loss = torch.mean((true_preds - denoise_preds) ** 2)
-        reg_loss = (self.embedding_item.weight.norm(2).pow(2)+self.embedding_item_feats.weight.norm(2).pow(2))/self.num_items
+        reg_loss = (self.embedding_item.weight.norm(2).pow(2)+self.embedding_item_feats.weight.norm(2).pow(2))  * self.args.l2_reg_i
         loss += reg_loss
         return loss

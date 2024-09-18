@@ -141,6 +141,14 @@ class NCF(nn.Module):
             reg_loss = (self.gmf_embedding_user.weight.norm(2).pow(2)+self.ncf_embedding_user.weight.norm(2).pow(2)) * self.args.l2_reg_u
             loss += reg_loss
         return loss
+    
+    def get_loss_central(self, ratings, predictions):
+        loss = torch.mean((ratings - predictions) ** 2)
+        if self.args.regularization:
+            reg_loss = (self.gmf_embedding_user.weight.norm(2).pow(2)+self.ncf_embedding_user.weight.norm(2).pow(2)) * self.args.l2_reg_u
+            reg_loss += (self.gmf_embedding_item.weight.norm(2).pow(2)+self.ncf_embedding_item.weight.norm(2).pow(2)) * self.args.l2_reg_i
+            loss += reg_loss
+        return loss
 
 class FM(nn.Module):
     def __init__(self, num_users, num_items, num_user_feats, num_item_feats, args):
@@ -229,6 +237,16 @@ class FM(nn.Module):
         loss = torch.mean((ratings - predictions) ** 2)
         if self.args.regularization:
             reg_loss = self.embedding_user.weight.norm(2).pow(2) * self.args.l2_reg_u
+            loss += reg_loss
+        return loss
+    
+    def get_loss_central(self, ratings, predictions):
+        loss = torch.mean((ratings - predictions) ** 2)
+        if self.args.regularization:
+            reg_loss = self.embedding_user.weight.norm(2).pow(2) * self.args.l2_reg_u
+            reg_loss += (self.embedding_item.weight.norm(2).pow(2)+self.embedding_item_feats.weight.norm(2).pow(2)) * self.args.l2_reg_i
+            if self.num_user_feats > 0:
+                reg_loss += self.embedding_user_feats.weight.norm(2).pow(2) * self.args.l2_reg_u
             loss += reg_loss
         return loss
 
@@ -336,5 +354,15 @@ class DeepFM(nn.Module):
         loss = torch.mean((ratings - predictions) ** 2)
         if self.args.regularization:
             reg_loss = self.embedding_user.weight.norm(2).pow(2) * self.args.l2_reg_u
+            loss += reg_loss
+        return loss
+    
+    def get_loss_central(self, ratings, predictions):
+        loss = torch.mean((ratings - predictions) ** 2)
+        if self.args.regularization:
+            reg_loss = self.embedding_user.weight.norm(2).pow(2) * self.args.l2_reg_u
+            reg_loss += (self.embedding_item.weight.norm(2).pow(2)+self.embedding_item_feats.weight.norm(2).pow(2)) * self.args.l2_reg_i
+            if self.num_user_feats > 0:
+                reg_loss += self.embedding_user_feats.weight.norm(2).pow(2) * self.args.l2_reg_u
             loss += reg_loss
         return loss
