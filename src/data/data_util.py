@@ -64,6 +64,11 @@ def train_test_split(ratings_dict, args, item_id_list=None):
 
     return train_data, test_data
 
+def sample_negative(all_items, ratings_dict, user):
+    positive_items = set(ratings_dict[user])
+    available_items = all_items - positive_items
+    return random.choice(list(available_items))
+
 def sample_item_central(train_data, args):
     random.shuffle(train_data)
     sample_train_data = []
@@ -232,14 +237,22 @@ def load_data(args):
     if args.dataset == "ml-20m":
         rating_path = f"{data_path}/ratings.csv"
         rating_df = pd.read_csv(rating_path)
+        rating_df.columns = ["UserID", "ItemID", "Rating", "Timestamp"]
         item_path = f"{data_path}/movies.csv"
         item_df = pd.read_csv(item_path, encoding="iso-8859-1")
-        # print(item_df.head())
+        item_df.columns = ["ItemID", "Title", "Genres"]
+        item_df["Genres"] = item_df["Genres"].apply(lambda x: x.split("|"))
+        item_df = genre_to_onehot(item_df, args)
         # user_path = f"{data_path}/users.dat"
         # user_df = pd.read_csv(user_path, delimiter='::', header=None, names=["UserID", "Gender", "Age", "Occupation", "Zip-code"])
         # item_df, user_df, rating_df = standard_id(item_df, user_df, rating_df)
-        print(len(item_df))
-        return item_df, None, rating_df
+        unique_user_ids = rating_df.UserID.unique()
+        user_df = pd.DataFrame(data={"UserID": unique_user_ids})
+        item_df, user_df, rating_df = standard_id(item_df, user_df, rating_df)
+        combine_df = rating_df.merge(item_df, on="ItemID", how='left')
+        combine_df.drop("Timestamp", axis=1, inplace=True)
+        print(combine_df.head())
+        return item_df, user_df, combine_df
     
     if args.dataset == "yelp":
         rating_path = f"{data_path}/yelp_academic_dataset_review.csv"
@@ -271,12 +284,19 @@ def load_data(args):
     if args.dataset == "ml-25m":
         rating_path = f"{data_path}/ratings.csv"
         rating_df = pd.read_csv(rating_path)
+        rating_df.columns = ["UserID", "ItemID", "Rating", "Timestamp"]
+        # print(rating_df["Rating"].min(), rating_df["Rating"].max())
         item_path = f"{data_path}/movies.csv"
         item_df = pd.read_csv(item_path, encoding="iso-8859-1")
-        # print(item_df.head())
-        user_path = f"{data_path}/users.csv"
-        user_df = pd.read_csv(user_path, encoding="iso-8859-1", header=None, names=["UserID", "Gender", "Age", "Occupation", "Zip-code"])
-        # item_df, user_df, rating_df = standard_id(item_df, user_df, rating_df)
+        item_df.columns = ["ItemID", "Title", "Genres"]
+        item_df["Genres"] = item_df["Genres"].apply(lambda x: x.split("|"))
+        item_df = genre_to_onehot(item_df, args)
+        unique_user_ids = rating_df.UserID.unique()
+        user_df = pd.DataFrame(data={"UserID": unique_user_ids})
+        item_df, user_df, rating_df = standard_id(item_df, user_df, rating_df)
+        combine_df = rating_df.merge(item_df, on="ItemID", how='left')
+        combine_df.drop("Timestamp", axis=1, inplace=True)
+        # print(combine_df.head())
         return item_df, user_df, rating_df
     
     if args.dataset == "bookcrossing":

@@ -72,7 +72,7 @@ if __name__ == "__main__":
     # print("std:", torch.std(all_norms))
     # print("max:", torch.max(all_norms))
     # print("99%:", torch.quantile(all_norms, 0.99))
-    # initialize a denoise model
+    # # initialize a denoise model
     # print("max:", base_model.user_bias.max())
     # print("99%:", torch.quantile(base_model.user_bias, 0.99))
     # print("min:", base_model.user_bias.min())

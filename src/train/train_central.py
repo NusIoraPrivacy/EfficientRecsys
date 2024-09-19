@@ -45,7 +45,8 @@ def train_centralize_model(n_users, n_items, n_user_feat, n_item_feat, train_dat
     print(len(train_loader), len(test_loader))
     total_rounds = args.epochs*len(train_loader)
     optimizer = torch.optim.Adam(model.parameters(), betas=(0.9, 0.99), lr=args.lr)
-    # scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=milestones, gamma=0.5)
+    milestones = [total_rounds*i//20 for i in range(1, 10)]
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=milestones, gamma=0.5)
 
     best_rmse = 100
     save_dir = f"{args.root_path}/model/{args.dataset}/{args.model}"
@@ -76,6 +77,7 @@ def train_centralize_model(n_users, n_items, n_user_feat, n_item_feat, train_dat
                 loss.backward()
                 loss_list.append(loss.item())
                 optimizer.step()
+                # scheduler.step()
                 optimizer.zero_grad()
                 torch.cuda.empty_cache()
                 loss = np.mean(loss_list)

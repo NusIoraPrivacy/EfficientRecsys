@@ -25,7 +25,7 @@ def get_args():
                         help = "convert to implicit rating")
     parser.add_argument("--test_pct", type=float, default=0.2, 
                         help = "percentage of test data")                
-    parser.add_argument("--n_train_neg", type=int, default=5, 
+    parser.add_argument("--n_train_neg", type=int, default=0, 
                         help = "number of negative samples for training")
     parser.add_argument("--n_test_neg", type=int, default=100, 
                         help = "number of negative samples for testing")

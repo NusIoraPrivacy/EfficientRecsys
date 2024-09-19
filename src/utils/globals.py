@@ -1,13 +1,15 @@
 
-norm_dict = {"ml-1m": {"MF": 9, "NCF": (3.5, 2.8), "FM": (5.5, 2), "DeepFM": (4.5, 2.7)},
-            "ml-10m": {"MF": 9, "NCF": (3.5, 2.8), "FM": (5.5, 2), "DeepFM": (4.5, 2.7)},
-            "bookcrossing": {"MF": 9, "NCF": (3.5, 2.8), "FM": (5.5, 2), "DeepFM": (4.5, 2.7)},
-            "yelp": {"MF": 1.4, "NCF": (0.12, 0.10), "FM": (0.32, 0, 0.6), "DeepFM": (0.35, 0)},
+norm_dict = {"ml-100k": {"MF": (4.5, 2), "NCF": (3.5, 2.8), "FM": (5.5, 2), "DeepFM": (4.5, 2.7)},
+            "ml-1m": {"MF": (4.5, 2), "NCF": (3.5, 2.8), "FM": (5.5, 2), "DeepFM": (4.5, 2.7)},
+            "ml-10m": {"MF": (0.005, 3), "NCF": (3.5, 2.8), "FM": (5.5, 2), "DeepFM": (4.5, 2.7)},
+            "ml-25m": {"MF": (9, 2), "NCF": (3.5, 2.8), "FM": (5.5, 2), "DeepFM": (4.5, 2.7)},
+            "bookcrossing": {"MF": (9, 2), "NCF": (3.5, 2.8), "FM": (5.5, 2), "DeepFM": (4.5, 2.7)},
+            "yelp": {"MF": (0.06, 4), "NCF": (0.90, 0.25), "FM": (0.16, 0, 1.5), "DeepFM": (0.14, 0, 1.8)},
             }
 
 distribution_dict = {"MF": (0.3, 1.5), "NCF": (0.01, 1.2)}
 
-rating_range = {"ml-1m": (1, 5), "bookcrossing": (0, 10), "yelp": (1, 5), "ml-100k": (1, 5), "ml-10m": (1, 5)}
+rating_range = {"ml-1m": (1, 5), "bookcrossing": (0, 10), "yelp": (1, 5), "ml-100k": (1, 5), "ml-10m": (1, 5), "ml-25m": (0.5, 5.0)}
 
 # rating_thds = {"bookcrossing": (5, 10)} # (15, 15) 10391 items + 4517 users average 69 rated per user
 rating_thds = {"bookcrossing": (15, 15)} # (15, 15) 10391 items + 4517 users average 69 rated per user
@@ -21,7 +23,9 @@ private_param_dict = {
 
 all_genre_dict = {
     "ml-1m": ['Animation', "Children's", 'Comedy', 'Adventure', 'Fantasy', 'Romance', 'Drama', 'Action', 'Crime', 'Thriller', 'Horror', 'Sci-Fi', 'Documentary', 'War', 'Musical', 'Mystery', 'Film-Noir', 'Western'],
-    "ml-10m": ['Adventure', 'Animation', 'Children', 'Comedy', 'Fantasy', 'Romance', 'Drama', 'Action', 'Crime', 'Thriller', 'Horror', 'Mystery', 'Sci-Fi', 'IMAX', 'Documentary', 'War', 'Musical', 'Film-Noir', 'Western', '(no genres listed)']
+    "ml-10m": ['Adventure', 'Animation', 'Children', 'Comedy', 'Fantasy', 'Romance', 'Drama', 'Action', 'Crime', 'Thriller', 'Horror', 'Mystery', 'Sci-Fi', 'IMAX', 'Documentary', 'War', 'Musical', 'Film-Noir', 'Western', '(no genres listed)'],
+    "ml-20m": ['Adventure', 'Animation', 'Children', 'Comedy', 'Fantasy', 'Romance', 'Drama', 'Action', 'Crime', 'Thriller', 'Horror', 'Mystery', 'Sci-Fi', 'IMAX', 'Documentary', 'War', 'Musical', 'Western', 'Film-Noir', '(no genres listed)'],
+    "ml-25m": ['Adventure', 'Animation', 'Children', 'Comedy', 'Fantasy', 'Romance', 'Drama', 'Action', 'Crime', 'Thriller', 'Horror', 'Mystery', 'Sci-Fi', 'IMAX', 'Documentary', 'War', 'Musical', 'Western', 'Film-Noir', '(no genres listed)'],
 }
 
 models_w_feats = ["FM", "DeepFM"]

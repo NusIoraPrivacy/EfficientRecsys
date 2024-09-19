@@ -27,20 +27,27 @@ class MF(nn.Module):
         if noise_std > 0:
             init_user_emb = copy.deepcopy(users_emb.data)
             all_norms = torch.norm(users_emb, p=2, dim=-1)
-            users_emb = users_emb * torch.clamp(self.max_norm / all_norms, max=1).unsqueeze(-1)
+            users_emb = users_emb * torch.clamp(self.max_norm[0] / all_norms, max=1).unsqueeze(-1)
             noise = torch.normal(mean=0., std=noise_std, size=(users_emb.shape[-1],), device=users_emb.device)
             noise = noise.repeat(users_emb.shape[0], 1)
             users_emb += noise
             all_norms = torch.norm(users_emb, p=2, dim=-1)
-            users_emb = users_emb * torch.clamp(self.max_norm / all_norms, max=1).unsqueeze(-1)
+            users_emb = users_emb * torch.clamp(self.max_norm[0] / all_norms, max=1).unsqueeze(-1)
             noise = users_emb - init_user_emb
         items_emb = self.embedding_item(items)
         inner_pro = torch.mul(users_emb, items_emb)
         predictions = torch.sum(inner_pro, dim=1)
-        x_biases = torch.cat([self.user_bias[users].unsqueeze(-1), self.item_bias[items].unsqueeze(-1)], dim=-1).sum(1) # item_size
+        user_biases = self.user_bias[users].unsqueeze(-1)
+        if noise_std > 0:
+            init_user_bias = copy.deepcopy(user_biases.data)
+            user_biases += torch.normal(mean=0., std=noise_std, size=user_biases.shape, device=user_biases.device)
+            user_biases = torch.clamp(user_biases, min=-self.max_norm[1], max=self.max_norm[1])
+            user_bias_noise = user_biases - init_user_bias
+        x_biases = torch.cat([user_biases, self.item_bias[items].unsqueeze(-1)], dim=-1).sum(1) # item_size
         predictions += x_biases
         if noise_std > 0:
-            init_user_emb = torch.cat([init_user_emb, x_biases.unsqueeze(-1)], dim=-1)
+            init_user_emb = torch.cat([init_user_emb, init_user_bias], dim=-1)
+            noise = torch.cat([noise, user_bias_noise], dim=-1)
             return predictions, noise, init_user_emb
         return predictions
 
@@ -347,7 +354,13 @@ class DeepFM(nn.Module):
             feat_bias = torch.cat([torch.einsum("i, ji->ji", self.user_feat_bias, user_feats), torch.einsum("i, ji->ji", self.item_feat_bias, item_feats)], dim=-1)
         else:
             feat_bias = torch.einsum("i, ji->ji", self.item_feat_bias, item_feats)
-        x_biases = torch.cat([self.user_bias[user_ids], self.item_bias[item_ids], feat_bias], dim=-1).sum(1) # item_size
+        user_biases = self.user_bias[user_ids] # item_size, 1
+        if noise_std > 0:
+            init_user_bias = copy.deepcopy(user_biases.data)
+            user_biases += torch.normal(mean=0., std=noise_std, size=user_biases.shape, device=user_biases.device)
+            user_biases = torch.clamp(user_biases, min=-self.max_norm[2], max=self.max_norm[2])
+            user_bias_noise = user_biases - init_user_bias
+        x_biases = torch.cat([user_biases, self.item_bias[item_ids], feat_bias], dim=-1).sum(1) # item_size
         fm_out +=  x_biases + self.offset # item_size
         all_embs = all_embs.view(-1, self.embed_output_dim) # (item_size, num_feats*emb_dim)
         dnn_out = self.mlp(all_embs).squeeze(-1)
@@ -359,6 +372,10 @@ class DeepFM(nn.Module):
             else:
                 noises = user_emb_noises
                 init_users_emb = init_user_embs
+            init_user_bias = init_user_bias.unsqueeze(-1).repeat(1, 1, init_users_emb.shape[-1])
+            user_bias_noise = user_bias_noise.unsqueeze(-1).repeat(1, 1, init_users_emb.shape[-1])
+            init_users_emb = torch.cat([init_user_embs, init_user_bias], dim=1)
+            noises = torch.cat([init_user_embs, user_bias_noise], dim=1)
             return predictions, noises, init_users_emb
         return predictions
 
