@@ -247,8 +247,8 @@ class FM(nn.Module):
                 init_users_emb = init_user_embs
             init_user_bias = init_user_bias.unsqueeze(-1).repeat(1, 1, init_users_emb.shape[-1])
             user_bias_noise = user_bias_noise.unsqueeze(-1).repeat(1, 1, init_users_emb.shape[-1])
-            init_users_emb = torch.cat([init_user_embs, init_user_bias], dim=1)
-            noises = torch.cat([init_user_embs, user_bias_noise], dim=1)
+            init_users_emb = torch.cat([init_users_emb, init_user_bias], dim=1)
+            noises = torch.cat([noises, user_bias_noise], dim=1)
             return fm_out, noises, init_users_emb
         return fm_out
 
@@ -374,8 +374,8 @@ class DeepFM(nn.Module):
                 init_users_emb = init_user_embs
             init_user_bias = init_user_bias.unsqueeze(-1).repeat(1, 1, init_users_emb.shape[-1])
             user_bias_noise = user_bias_noise.unsqueeze(-1).repeat(1, 1, init_users_emb.shape[-1])
-            init_users_emb = torch.cat([init_user_embs, init_user_bias], dim=1)
-            noises = torch.cat([init_user_embs, user_bias_noise], dim=1)
+            init_users_emb = torch.cat([init_users_emb, init_user_bias], dim=1)
+            noises = torch.cat([noises, user_bias_noise], dim=1)
             return predictions, noises, init_users_emb
         return predictions
 

@@ -26,32 +26,7 @@ if __name__ == "__main__":
     model_path = f"{args.root_path}/model/{args.dataset}/{args.model}/recsys_best"
     base_model.load_state_dict(torch.load(model_path, map_location=args.device))
     base_model = base_model.to(args.device)
-    train_dataset = DenoiseDataset(train_data, base_model, n_users, n_items, n_user_feat, n_item_feat, args, max_item=args.max_items)
-    train_loader = DataLoader(
-                train_dataset, 
-                batch_size=args.d_batch_size, 
-                shuffle=True
-                )
-    # obtain the performance without noise
-    test_dataset = DenoiseDataset(test_data, base_model, n_users, n_items, n_user_feat, n_item_feat, args, max_item=args.max_items, noise=False)
-    test_loader = DataLoader(
-                test_dataset, 
-                batch_size=args.d_batch_size, 
-                shuffle=False
-                )
     
-    mse, rmse, mae = test_model(base_model, test_loader, args, denoise=False)
-    print(f"Performance without noise: RMSE: {rmse}, MSE: {mse}, MAE: {mae}")
-
-    # obtain the performance before denoise
-    test_dataset = DenoiseDataset(test_data, base_model, n_users, n_items, n_user_feat, n_item_feat, args, max_item=args.max_items)
-    test_loader = DataLoader(
-                test_dataset, 
-                batch_size=args.d_batch_size, 
-                shuffle=False
-                )
-    mse, rmse, mae = test_model(base_model, test_loader, args, denoise=False)
-    print(f"Performance for noise without denoise: RMSE: {rmse}, MSE: {mse}, MAE: {mae}")
     # all_norms = torch.norm(base_model.embedding_user.weight, p=2, dim=-1)
     # print("average:", torch.mean(all_norms))
     # print("std:", torch.std(all_norms))
@@ -77,6 +52,34 @@ if __name__ == "__main__":
     # print("99%:", torch.quantile(base_model.user_bias, 0.99))
     # print("min:", base_model.user_bias.min())
     # print("1%:", torch.quantile(base_model.user_bias, 0.01))
+
+    # obtain the performance without noise
+    train_dataset = DenoiseDataset(train_data, base_model, n_users, n_items, n_user_feat, n_item_feat, args, max_item=args.max_items)
+    train_loader = DataLoader(
+                train_dataset, 
+                batch_size=args.d_batch_size, 
+                shuffle=True
+                )
+    test_dataset = DenoiseDataset(test_data, base_model, n_users, n_items, n_user_feat, n_item_feat, args, max_item=args.max_items, noise=False, test=True)
+    test_loader = DataLoader(
+                test_dataset, 
+                batch_size=args.d_batch_size * 5, 
+                shuffle=False
+                )
+    
+    mse, rmse, mae = test_model(base_model, test_loader, args, denoise=False)
+    print(f"Performance without noise: RMSE: {rmse}, MSE: {mse}, MAE: {mae}")
+
+    # obtain the noisy performance before denoise
+    test_dataset = DenoiseDataset(test_data, base_model, n_users, n_items, n_user_feat, n_item_feat, args, max_item=args.max_items, test=True)
+    test_loader = DataLoader(
+                test_dataset, 
+                batch_size=args.d_batch_size * 5, 
+                shuffle=False
+                )
+    mse, rmse, mae = test_model(base_model, test_loader, args, denoise=False)
+    print(f"Performance for noise without denoise: RMSE: {rmse}, MSE: {mse}, MAE: {mae}")
+
     emb_dim = get_emb_size(base_model, args)
     denoise_model = eval(f"{args.model}_d")(num_users=n_users, num_items=n_items, num_user_feats=n_user_feat, num_item_feats=n_item_feat, emb_dim=emb_dim, args=args)
     denoise_model = denoise_model.to(args.device)

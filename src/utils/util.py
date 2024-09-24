@@ -65,6 +65,17 @@ def get_emb_size(base_model, args):
             emb_dim += param.shape[-1]
     return emb_dim
 
+def get_sparse_dense_size(base_model, args):
+    dense_size = 0
+    sparse_size = 0
+    for name, param in base_model.named_parameters():
+        if ("embedding_user" not in name or "embedding_user_feat" in name) and ("user_bias" not in name):
+            if  ("embedding_item" not in name) and ("item_bias" not in name) and ("item_feat_bias" not in name) and ("embedding_user_feat" not in name) and ("user_feat_bias" not in name): # 
+                dense_size += torch.numel(param)
+            else:
+                sparse_size += torch.numel(param)
+    return dense_size, sparse_size
+
 def get_model_size(model):
     model_size = 0
     for name, param in model.named_parameters():

@@ -80,7 +80,7 @@ class CentralDataset(Dataset):
         return user, item, rating, item_feat, user_feat
 
 class DenoiseDataset(Dataset):
-    def __init__(self, data_dict, base_model, n_users, n_items, n_user_feat, n_item_feat, args, max_item=150, noise=True):
+    def __init__(self, data_dict, base_model, n_users, n_items, n_user_feat, n_item_feat, args, max_item=150, noise=True, test=False):
         self.base_model = base_model
         self.data_dict = data_dict
         self.args = args
@@ -98,6 +98,7 @@ class DenoiseDataset(Dataset):
         self.n_item_feat = n_item_feat
         self.sensitivity = norm_dict[args.dataset][args.model]
         self.noise = noise
+        self.test = test
 
     def __len__(self):
         return len(self.data_dict)
@@ -126,9 +127,17 @@ class DenoiseDataset(Dataset):
             user_feat = torch.tensor([]).to(self.args.device)
         if self.noise:
             sigma = get_noise_std(self.sensitivity, self.args)
-            predictions, noises, init_user_embs = self.base_model(user_ids, item_ids, user_feats=user_feat, item_feats=item_feat, noise_std=sigma)
+            if self.test:
+                with torch.no_grad():
+                    predictions, noises, init_user_embs = self.base_model(user_ids, item_ids, user_feats=user_feat, item_feats=item_feat, noise_std=sigma)
+            else:
+                predictions, noises, init_user_embs = self.base_model(user_ids, item_ids, user_feats=user_feat, item_feats=item_feat, noise_std=sigma)
             noises, init_user_embs = noises[0], init_user_embs[0]
         else:
-            predictions = self.base_model(user_ids, item_ids, user_feats=user_feat, item_feats=item_feat)
+            if self.test:
+                with torch.no_grad():
+                    predictions = self.base_model(user_ids, item_ids, user_feats=user_feat, item_feats=item_feat)
+            else:
+                predictions = self.base_model(user_ids, item_ids, user_feats=user_feat, item_feats=item_feat)
             noises, init_user_embs = torch.tensor([]), torch.tensor([])
         return predictions, noises,  init_user_embs, item_ids, ratings, masks, item_feat
