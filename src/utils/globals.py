@@ -1,5 +1,5 @@
 
-norm_dict = {"ml-100k": {"MF": (4.5, 2), "NCF": (3.5, 2.8), "FM": (5.5, 0, 2), "DeepFM": (4.5, 0, 2.7)},
+norm_dict = {"ml-100k": {"MF": (5, 2), "NCF": (0.52, 0.35), "FM": (1.5, 0.87, 0.6), "DeepFM": (1.8, 1.38, 1.2)},
             "ml-1m": {"MF": (4.5, 2), "NCF": (3.5, 2.8), "FM": (2, 0.33, 1.5), "DeepFM": (2.0, 0.30, 1.3)},
             "ml-10m": {"MF": (0.005, 3), "NCF": (1, 0.6), "FM": (4.77, 0, 0.8), "DeepFM": (2.5, 0, 0.8)},
             "ml-25m": {"MF": (0.005, 4), "NCF": (1.3, 1.1), "FM": (4.5, 0, 2), "DeepFM": (4.4, 0, 1.5)},
@@ -19,6 +19,13 @@ private_param_dict = {
                     "NCF": ["gmf_embedding_user.weight", "ncf_embedding_user.weight"],
                     "FM": ["embedding_user.weight"],
                     "DeepFM": ["embedding_user.weight"],
+                    }
+
+item_param_dict = {
+                    "MF": ["embedding_item.weight"], 
+                    "NCF": ["gmf_embedding_item.weight", "ncf_embedding_item.weight"],
+                    "FM": ["embedding_item.weight"],
+                    "DeepFM": ["embedding_item.weight"],
                     }
 
 all_genre_dict = {

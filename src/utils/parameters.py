@@ -39,7 +39,7 @@ def get_args():
                         help = "number of selected client per iteration")
     parser.add_argument("--early_stop", type=int, default=20, 
                         help = "number of rounds/patience for early stop")
-    parser.add_argument("--n_log_rounds", type=int, default=500, 
+    parser.add_argument("--n_log_rounds", type=int, default=50, 
                         help = "number of rounds to log the accuracy")
     parser.add_argument("--epochs", type=int, default=200, 
                         help = "number of iterations")

@@ -45,11 +45,9 @@ def get_rating_list(rating_df, args, item_id_list=None):
         counter += 1
     return ratings_dict
 
-def train_test_split(ratings_dict, args, item_id_list=None):
+def train_test_split(ratings_dict, args):
     train_data = {}
     test_data = {}
-    if item_id_list is None:
-        item_id_list = rating_df.ItemID.unique()
     for user_id in ratings_dict:
         rating_list = ratings_dict[user_id]
         random.shuffle(rating_list)
@@ -194,6 +192,7 @@ def load_data(args):
         combine_df = rating_df.merge(item_df, on="ItemID", how='left')
         combine_df = combine_df.merge(user_df, on="UserID", how='left')
         combine_df.drop("Timestamp", axis=1, inplace=True)
+        # print(combine_df.shape)
         return item_df, user_df, combine_df
     
     if args.dataset == "ml-100k":
@@ -225,11 +224,15 @@ def load_data(args):
         # print(user_df.head())
         # avg_user = rating_df.groupby("UserID")["Rating"].count()
         # print(avg_user.mean())
+        # print(combine_df.shape)
         return item_df, user_df, combine_df
 
     if args.dataset == "ml-10m":
         rating_path = f"{data_path}/ratings.dat"
         rating_df = pd.read_csv(rating_path, delimiter='::', header=None, names=["UserID", "ItemID", "Rating", "Timestamp"])
+        # rating_df.drop("Timestamp", axis=1, inplace=True)
+        # rating_df.columns = ["user", "item", "rating"]
+        # rating_df.to_csv(f"{data_path}/ratings.csv", index=False)
         item_path = f"{data_path}/movies.dat"
         item_df = pd.read_csv(item_path, delimiter='::', header=None, names=["ItemID", "Title", "Genres"], encoding="iso-8859-1")
         item_df["Genres"] = item_df["Genres"].apply(lambda x: x.split("|"))
@@ -242,6 +245,7 @@ def load_data(args):
         # print("average item features:", item_df.drop("ItemID", axis=1).values.sum(axis=1).mean())
         combine_df = rating_df.merge(item_df, on="ItemID", how='left')
         combine_df.drop("Timestamp", axis=1, inplace=True)
+        # print(combine_df.shape)
         return item_df, user_df, combine_df
     
     if args.dataset == "ml-20m":
@@ -261,7 +265,7 @@ def load_data(args):
         item_df, user_df, rating_df = standard_id(item_df, user_df, rating_df)
         combine_df = rating_df.merge(item_df, on="ItemID", how='left')
         combine_df.drop("Timestamp", axis=1, inplace=True)
-        print(combine_df.head())
+        # print(combine_df.head())
         return item_df, user_df, combine_df
     
     if args.dataset == "yelp":
@@ -281,6 +285,8 @@ def load_data(args):
         unique_user_ids = rating_df.UserID.unique()
         user_df = pd.DataFrame(data={"UserID": unique_user_ids})
         item_df, user_df, rating_df = standard_id(item_df, user_df, rating_df)
+        # rating_df.columns = ["user", "item", "rating"]
+        # rating_df.to_csv(f"{data_path}/full.csv", index=False)
         item_df = process_item_df(item_df, args)
         # print("max item features:", item_df.drop("ItemID", axis=1).values.sum(axis=1).max())
         # print("average item features:", item_df.drop("ItemID", axis=1).values.sum(axis=1).mean())
@@ -290,6 +296,7 @@ def load_data(args):
         avg_rating = combine_df["Rating"].mean()
         base_rmse = np.sqrt(((combine_df["Rating"] - avg_rating) ** 2).mean())
         print("baseline rmse:", base_rmse)
+        # print(combine_df.shape)
         return item_df, user_df, combine_df
 
     if args.dataset == "ml-25m":
@@ -310,6 +317,7 @@ def load_data(args):
         combine_df = rating_df.merge(item_df, on="ItemID", how='left')
         combine_df.drop("Timestamp", axis=1, inplace=True)
         # print(combine_df.isna().sum())
+        # print(combine_df.shape)
         return item_df, user_df, combine_df
     
     if args.dataset == "bookcrossing":

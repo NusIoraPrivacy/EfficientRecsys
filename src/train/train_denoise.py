@@ -54,7 +54,7 @@ def train_demod(user_id_list, item_id_list, train_loader, test_loader, base_mode
 
                 # test the performance of denoise model
                 pbar.update(1)
-                if n_rounds % args.n_log_rounds == 0:
+                if n_rounds % args.n_log_rounds == 0 or n_rounds == (total_rounds-1):
                     mse, rmse, mae = test_model(base_model, test_loader, args, denoise=True, denoise_model=denoise_model)
                     if rmse < best_rmse:
                         best_rmse = rmse

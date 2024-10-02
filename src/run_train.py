@@ -12,7 +12,7 @@ if __name__ == "__main__":
     item_id_list = item_df.ItemID.unique()
     user_id_list = user_df.UserID.unique()
     ratings_dict = get_rating_list(rating_df, args)
-    train_data, test_data = train_test_split(ratings_dict, args, item_id_list)
+    train_data, test_data = train_test_split(ratings_dict, args)
     # print(train_data[0])
     n_items = len(item_id_list)
     n_users = len(user_id_list)
