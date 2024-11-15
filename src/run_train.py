@@ -7,6 +7,9 @@ from models.recsys_model import *
 if __name__ == "__main__":
     args = get_args()
     item_df, user_df, rating_df = load_data(args)
+    # print(item_df.head())
+    # print(user_df.head())
+    # print(rating_df.head())
     n_user_feat = user_df.shape[-1]-1
     n_item_feat = item_df.shape[-1]-1
     item_id_list = item_df.ItemID.unique()

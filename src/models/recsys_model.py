@@ -5,7 +5,7 @@ import copy
 import numpy as np
 
 class MF(nn.Module):
-    def __init__(self, num_users, num_items, args, **kwargs):
+    def __init__(self, num_users, num_items, args, max_norm=None, **kwargs):
         super(MF, self).__init__()
         self.embedding_user = nn.Embedding(
             num_embeddings=num_users, embedding_dim=args.n_factors)
@@ -16,7 +16,10 @@ class MF(nn.Module):
         self.args = args
         self.num_users = num_users
         self.num_items = num_items
-        self.max_norm = norm_dict[args.dataset]["MF"]
+        if max_norm is None:
+            self.max_norm = norm_dict[args.dataset]["MF"]
+        else:
+            self.max_norm = max_norm
         nn.init.kaiming_normal_(self.embedding_user.weight, mode='fan_out')
         nn.init.kaiming_normal_(self.embedding_item.weight, mode='fan_out')
 
@@ -67,7 +70,7 @@ class MF(nn.Module):
 
 # neural collaborative filtering
 class NCF(nn.Module):
-    def __init__(self, num_users, num_items, args, **kwargs):
+    def __init__(self, num_users, num_items, args, max_norm=None, **kwargs):
         super(NCF, self).__init__()
         self.gmf_embedding_user = nn.Embedding(
             num_embeddings=num_users, embedding_dim=args.n_factors * 2)
@@ -90,7 +93,10 @@ class NCF(nn.Module):
         self.args = args
         self.num_users = num_users
         self.num_items = num_items
-        self.max_norm = norm_dict[args.dataset]["NCF"]
+        if max_norm is None:
+            self.max_norm = norm_dict[args.dataset]["NCF"]
+        else:
+            self.max_norm = max_norm
         self.init_embedding()
         self.ncf_hidden_layers.apply(self.init_layer)
         self.output_layer.apply(self.init_layer)
@@ -159,7 +165,7 @@ class NCF(nn.Module):
         return loss
 
 class FM(nn.Module):
-    def __init__(self, num_users, num_items, num_user_feats, num_item_feats, args):
+    def __init__(self, num_users, num_items, num_user_feats, num_item_feats, args, max_norm=None):
         super().__init__()
         self.embedding_user = nn.Embedding(
             num_embeddings=num_users, embedding_dim=args.n_factors)
@@ -176,7 +182,10 @@ class FM(nn.Module):
         self.num_items = num_items
         self.num_user_feats = num_user_feats
         self.num_item_feats = num_item_feats
-        self.max_norm = norm_dict[args.dataset]["FM"]
+        if max_norm is None:
+            self.max_norm = norm_dict[args.dataset]["FM"]
+        else:
+            self.max_norm = max_norm
         self.n_max_user_feat = n_max_user_feat_dict[args.dataset]
         nn.init.kaiming_normal_(self.embedding_user.weight, mode='fan_out')
         nn.init.kaiming_normal_(self.embedding_item.weight, mode='fan_out')
@@ -270,7 +279,7 @@ class FM(nn.Module):
         return loss
 
 class DeepFM(nn.Module):
-    def __init__(self, num_users, num_items, num_user_feats, num_item_feats, args):
+    def __init__(self, num_users, num_items, num_user_feats, num_item_feats, args, max_norm=None):
         super().__init__()
         self.embedding_user = nn.Embedding(
             num_embeddings=num_users, embedding_dim=args.n_factors)
@@ -300,7 +309,10 @@ class DeepFM(nn.Module):
         self.num_items = num_items
         self.num_user_feats = num_user_feats
         self.num_item_feats = num_item_feats
-        self.max_norm = norm_dict[args.dataset]["DeepFM"]
+        if max_norm is None:
+            self.max_norm = norm_dict[args.dataset]["DeepFM"]
+        else:
+            self.max_norm = max_norm
         self.n_max_user_feat = n_max_user_feat_dict[args.dataset]
         nn.init.kaiming_normal_(self.embedding_user.weight, mode='fan_out')
         nn.init.kaiming_normal_(self.embedding_item.weight, mode='fan_out')

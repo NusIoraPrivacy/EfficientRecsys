@@ -3,13 +3,15 @@ norm_dict = {"ml-100k": {"MF": (5, 2), "NCF": (0.52, 0.35), "FM": (1.5, 0.87, 0.
             "ml-1m": {"MF": (4.5, 2), "NCF": (3.5, 2.8), "FM": (2, 0.33, 1.5), "DeepFM": (2.0, 0.30, 1.3)},
             "ml-10m": {"MF": (0.005, 3), "NCF": (1, 0.6), "FM": (4.77, 0, 0.8), "DeepFM": (2.5, 0, 0.8)},
             "ml-25m": {"MF": (0.005, 4), "NCF": (1.3, 1.1), "FM": (4.5, 0, 2), "DeepFM": (4.4, 0, 1.5)},
-            "bookcrossing": {"MF": (9, 2), "NCF": (3.5, 2.8), "FM": (5.5, 2), "DeepFM": (4.5, 0, 2.7)},
+            "bookcrossing": {"MF": (9, 2), "NCF": (3.5, 2.8), "FM": (5.5, 0, 2), "DeepFM": (4.5, 0, 2.7)},
             "yelp": {"MF": (0.06, 4), "NCF": (0.90, 0.25), "FM": (0.16, 0, 1.5), "DeepFM": (0.14, 0, 1.8)},
             }
 
 distribution_dict = {"MF": (0.3, 1.5), "NCF": (0.01, 1.2)}
 
 rating_range = {"ml-1m": (1, 5), "bookcrossing": (0, 10), "yelp": (1, 5), "ml-100k": (1, 5), "ml-10m": (1, 5), "ml-25m": (0.5, 5.0)}
+
+pos_thd = {"ml-1m": 4, "bookcrossing": 6, "yelp": 4, "ml-100k": 4, "ml-10m": 4, "ml-25m": 4}
 
 # rating_thds = {"bookcrossing": (5, 10)} # (15, 15) 10391 items + 4517 users average 69 rated per user
 rating_thds = {"bookcrossing": (15, 15)} # (15, 15) 10391 items + 4517 users average 69 rated per user

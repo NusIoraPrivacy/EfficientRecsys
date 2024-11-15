@@ -23,6 +23,8 @@ def get_args():
     #                     help = "weight on non-zero ratings")
     parser.add_argument("--implicit", type=str2bool, default=False, 
                         help = "convert to implicit rating")
+    parser.add_argument("--neg_ratio", type=float, default=1.5, 
+                        help = "ratio of negative samples")
     parser.add_argument("--test_pct", type=float, default=0.2, 
                         help = "percentage of test data")                
     parser.add_argument("--n_train_neg", type=int, default=0, 
@@ -62,7 +64,7 @@ def get_args():
                         help = "privacy budget")
     parser.add_argument("--delta", type=float, default=1e-4, 
                         help = "privacy budget")
-    parser.add_argument("--device", type=str, default="cuda:0")
+    parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--debug", type=str2bool, default=False)
     args = parser.parse_args()
     return args

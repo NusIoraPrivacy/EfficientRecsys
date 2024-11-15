@@ -167,4 +167,4 @@ def train_fl_model(user_id_list, item_id_list, train_dataset, test_dataset, mode
     save_dir = f"{args.root_path}/model/{args.dataset}/{args.model}"
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
-    torch.save(best_model.state_dict(), f"{save_dir}/recsys_best")
+    torch.save(best_model.state_dict(), f"{save_dir}/recsys_best_dim{int(args.n_factors)}_{args.implicit}")

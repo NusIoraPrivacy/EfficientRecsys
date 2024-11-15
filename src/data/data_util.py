@@ -5,6 +5,8 @@ from tqdm import tqdm
 from utils.globals import *
 import json
 from collections import defaultdict
+import warnings
+warnings.filterwarnings("ignore")
 
 def standard_id(item_df, user_df, rating_df):
     userIDs = user_df.UserID.unique()
@@ -45,6 +47,15 @@ def get_rating_list(rating_df, args, item_id_list=None):
         counter += 1
     return ratings_dict
 
+def get_feature_list(feat_df):
+    feat_array = feat_df.values
+    feat_dict = {}
+    for feat_vec in feat_array:
+        feat_id = int(feat_vec[0])
+        feats = [int(e) for e in feat_vec[1:]]
+        feat_dict[feat_id] = feats
+    return feat_dict
+
 def train_test_split(ratings_dict, args):
     train_data = {}
     test_data = {}
@@ -61,6 +72,52 @@ def train_test_split(ratings_dict, args):
             test_data[user_id] = rating_list[-test_num:]
 
     return train_data, test_data
+
+def train_test_split_neg(ratings_dict, args, item_dict, user_dict, item_id_list, train=False):
+    train_data = {}
+    test_data = {}
+    for user_id in tqdm(ratings_dict):
+        rating_list = ratings_dict[user_id]
+        random.shuffle(rating_list)
+        test_num = int(len(rating_list) * args.test_pct)
+        if test_num == 0:
+            train_data[user_id] = rating_list
+            test_data[user_id] = []
+            # print(user_id, len(rating_list))
+        else:
+            train_data[user_id] = rating_list[:-test_num]
+            test_data[user_id] = rating_list[-test_num:]
+        # sample negative items for test data
+        rated_items = [rate[0] for rate in rating_list]
+        unrated_items = list(set(item_id_list) - set(rated_items))
+        random.shuffle(unrated_items)
+        sample_neg_items = unrated_items[:100]
+        for item_id in sample_neg_items:
+            rating_vec = [item_id, 0]
+            rating_vec += item_dict[item_id]
+            rating_vec += user_dict[user_id]
+            test_data[user_id].append(tuple(rating_vec))
+        # print("Before:", len(train_data[user_id]))
+        train_len = len(train_data[user_id])
+        train_len = int(train_len * args.neg_ratio)
+        if train:
+            sample_neg_items = unrated_items[100:(100+train_len)]
+            for item_id in sample_neg_items:
+                rating_vec = [item_id, 0]
+                rating_vec += item_dict[item_id]
+                rating_vec += user_dict[user_id]
+                train_data[user_id].append(tuple(rating_vec))
+        # print("After:", len(train_data[user_id]))
+    return train_data, test_data
+
+def fed2central(train_data):
+    central_data = []
+    for user_id in train_data:
+        rating_list = train_data[user_id]
+        for rating_vec in rating_list:
+            rating_vec = [user_id] + list(rating_vec)
+            central_data.append(rating_vec)
+    return central_data
 
 def sample_negative(all_items, ratings_dict, user):
     positive_items = set(ratings_dict[user])
