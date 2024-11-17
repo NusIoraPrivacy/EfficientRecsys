@@ -70,7 +70,7 @@ def train_centralize_model(n_users, n_items, n_user_feat, n_item_feat, user_id_l
         print(len(train_loader))
     else:
         test_dataset = CentralDataset(test_data, n_user_feat, n_item_feat, args)
-        test_loader = DataLoader(test_dataset, batch_size=50000, pin_memory=True)
+        test_loader = DataLoader(test_dataset, batch_size=50000*5, pin_memory=True)
         print(len(train_loader), len(test_loader))
     total_rounds = args.epochs*len(train_loader)
     optimizer = torch.optim.Adam(model.parameters(), betas=(0.9, 0.99), lr=args.lr)
@@ -104,6 +104,19 @@ def train_centralize_model(n_users, n_items, n_user_feat, n_item_feat, user_id_l
                 predictions = model(this_users, this_items, user_feats=user_feat, item_feats=item_feat)
                 loss = model.get_loss_central(predictions, true_rating)
                 loss.backward()
+                # ternary quantization
+                if args.ter_quant:
+                    max_grad = 0
+                    for param in model.parameters():
+                        max_grad = max(max_grad, torch.abs(param.grad).max().item())
+                    for param in model.parameters():
+                        probs = torch.abs(param.grad) / max_grad
+                        rand_values = torch.rand(param.grad.shape, device=probs.device)
+                        binary_vec = (rand_values >= probs).float()
+                        ternary_grads = binary_vec * torch.sign(param.grad) * max_grad
+                        param.grad = ternary_grads
+                    # for param in model.parameters():
+                    #     print(param.grad)
                 loss_list.append(loss.item())
                 optimizer.step()
                 # scheduler.step()

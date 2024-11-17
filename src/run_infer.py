@@ -91,6 +91,7 @@ if __name__ == "__main__":
 
     # obtain the performance without noise
     train_dataset = DenoiseDataset(train_data, base_model, n_users, n_items, n_user_feat, n_item_feat, args, max_item=args.max_items)
+    train_dataset.sensitivity = norm_bound
     train_loader = DataLoader(
                 train_dataset, 
                 batch_size=args.d_batch_size, 

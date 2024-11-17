@@ -19,8 +19,6 @@ def get_args():
                         help = "weight on l2 regularization for user embedding")
     parser.add_argument("--l2_reg_i", type=float, default=0.001, 
                         help = "weight on l2 regularization for item embedding")
-    # parser.add_argument("--alpha", type=float, default=500, 
-    #                     help = "weight on non-zero ratings")
     parser.add_argument("--implicit", type=str2bool, default=False, 
                         help = "convert to implicit rating")
     parser.add_argument("--neg_ratio", type=float, default=1.5, 
@@ -62,6 +60,7 @@ def get_args():
     parser.add_argument("--als", action="store_true")
     parser.add_argument("--epsilon", type=float, default=1, 
                         help = "privacy budget")
+    parser.add_argument("--ter_quant", action="store_true", help = "ternary quantization")
     parser.add_argument("--delta", type=float, default=1e-4, 
                         help = "privacy budget")
     parser.add_argument("--device", type=str, default="cuda")
