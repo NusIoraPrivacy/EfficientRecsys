@@ -69,15 +69,18 @@ if __name__ == "__main__":
             m = m_list[1]
             eq = sycret.EqFactory(n_threads=6)
             keys_a, keys_b = eq.keygen(m_phi)
+            keys_a = keys_a[:, :6]
             ass = generate_ass(n_dense)
-            # keys_a_copy = keys_a.repeat(m)
-            keys_a_copy = keys_a.repeat(m * n_users)
+            # keys_a_copy = np.repeat(keys_a, m * n_users, axis=0)
+            keys_a_copy = np.repeat(keys_a, m, axis=0)
             print(keys_a_copy.shape)
             t1 = time.time()
             # print(keys_a.shape)
             total_ass = 0
             total_vec = 0
-            xs = np.ones(m_phi * m * n_users)
+            xs = np.ones(m_phi * m)
+            print(xs.shape)
+            # xs = np.ones(m_phi)
             vec = eq.eval(0, xs, keys_a_copy, n_threads=6)
             vec = vec[:m_phi]
             for i in range(n_users):
@@ -98,3 +101,4 @@ if __name__ == "__main__":
                 total_ass += ass
             t2 = time.time()
             print(f"Time to aggregation for additive secrets: {(t2-t1)} s")
+            break

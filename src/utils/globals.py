@@ -17,10 +17,10 @@ pos_thd = {"ml-1m": 4, "bookcrossing": 6, "yelp": 4, "ml-100k": 4, "ml-10m": 4, 
 rating_thds = {"bookcrossing": (15, 15)} # (15, 15) 10391 items + 4517 users average 69 rated per user
 
 private_param_dict = {
-                    "MF": ["embedding_user.weight"], 
+                    "MF": ["embedding_user.weight", "user_bias"], 
                     "NCF": ["gmf_embedding_user.weight", "ncf_embedding_user.weight"],
-                    "FM": ["embedding_user.weight"],
-                    "DeepFM": ["embedding_user.weight"],
+                    "FM": ["embedding_user.weight", "user_bias"],
+                    "DeepFM": ["embedding_user.weight", "user_bias"],
                     }
 
 item_param_dict = {

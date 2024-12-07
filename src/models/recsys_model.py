@@ -61,11 +61,15 @@ class MF(nn.Module):
             loss += reg_loss
         return loss
 
-    def get_loss_central(self, ratings, predictions):
-        loss = torch.mean((ratings - predictions) ** 2)
-        if self.args.regularization:
-            reg_loss = self.embedding_user.weight.norm(2).pow(2) * self.args.l2_reg_u + self.embedding_item.weight.norm(2).pow(2) * self.args.l2_reg_i
-            loss += reg_loss
+    def get_loss_central(self, ratings, predictions, dp=False):
+        if dp:
+            loss = (ratings - predictions) ** 2
+            loss = loss/len(ratings)
+        else:
+            loss = torch.mean((ratings - predictions) ** 2)
+            if self.args.regularization:
+                reg_loss = self.embedding_user.weight.norm(2).pow(2) * self.args.l2_reg_u + self.embedding_item.weight.norm(2).pow(2) * self.args.l2_reg_i
+                loss += reg_loss
         return loss
 
 # neural collaborative filtering
@@ -156,12 +160,16 @@ class NCF(nn.Module):
             loss += reg_loss
         return loss
     
-    def get_loss_central(self, ratings, predictions):
-        loss = torch.mean((ratings - predictions) ** 2)
-        if self.args.regularization:
-            reg_loss = (self.gmf_embedding_user.weight.norm(2).pow(2)+self.ncf_embedding_user.weight.norm(2).pow(2)) * self.args.l2_reg_u
-            reg_loss += (self.gmf_embedding_item.weight.norm(2).pow(2)+self.ncf_embedding_item.weight.norm(2).pow(2)) * self.args.l2_reg_i
-            loss += reg_loss
+    def get_loss_central(self, ratings, predictions, dp=False):
+        if dp:
+            loss = (ratings - predictions) ** 2
+            loss = loss/len(ratings)
+        else:
+            loss = torch.mean((ratings - predictions) ** 2)
+            if self.args.regularization:
+                reg_loss = (self.gmf_embedding_user.weight.norm(2).pow(2)+self.ncf_embedding_user.weight.norm(2).pow(2)) * self.args.l2_reg_u
+                reg_loss += (self.gmf_embedding_item.weight.norm(2).pow(2)+self.ncf_embedding_item.weight.norm(2).pow(2)) * self.args.l2_reg_i
+                loss += reg_loss
         return loss
 
 class FM(nn.Module):
@@ -268,14 +276,18 @@ class FM(nn.Module):
             loss += reg_loss
         return loss
     
-    def get_loss_central(self, ratings, predictions):
-        loss = torch.mean((ratings - predictions) ** 2)
-        if self.args.regularization:
-            reg_loss = self.embedding_user.weight.norm(2).pow(2) * self.args.l2_reg_u
-            reg_loss += (self.embedding_item.weight.norm(2).pow(2)+self.embedding_item_feats.weight.norm(2).pow(2)) * self.args.l2_reg_i
-            if self.num_user_feats > 0:
-                reg_loss += self.embedding_user_feats.weight.norm(2).pow(2) * self.args.l2_reg_u
-            loss += reg_loss
+    def get_loss_central(self, ratings, predictions, dp=False):
+        if dp:
+            loss = (ratings - predictions) ** 2
+            loss = loss/len(ratings)
+        else:
+            loss = torch.mean((ratings - predictions) ** 2)
+            if self.args.regularization:
+                reg_loss = self.embedding_user.weight.norm(2).pow(2) * self.args.l2_reg_u
+                reg_loss += (self.embedding_item.weight.norm(2).pow(2)+self.embedding_item_feats.weight.norm(2).pow(2)) * self.args.l2_reg_i
+                if self.num_user_feats > 0:
+                    reg_loss += self.embedding_user_feats.weight.norm(2).pow(2) * self.args.l2_reg_u
+                loss += reg_loss
         return loss
 
 class DeepFM(nn.Module):
@@ -398,12 +410,16 @@ class DeepFM(nn.Module):
             loss += reg_loss
         return loss
     
-    def get_loss_central(self, ratings, predictions):
-        loss = torch.mean((ratings - predictions) ** 2)
-        if self.args.regularization:
-            reg_loss = self.embedding_user.weight.norm(2).pow(2) * self.args.l2_reg_u
-            reg_loss += (self.embedding_item.weight.norm(2).pow(2)+self.embedding_item_feats.weight.norm(2).pow(2)) * self.args.l2_reg_i
-            if self.num_user_feats > 0:
-                reg_loss += self.embedding_user_feats.weight.norm(2).pow(2) * self.args.l2_reg_u
-            loss += reg_loss
+    def get_loss_central(self, ratings, predictions, dp=False):
+        if dp:
+            loss = (ratings - predictions) ** 2
+            loss = loss/len(ratings)
+        else:
+            loss = torch.mean((ratings - predictions) ** 2)
+            if self.args.regularization:
+                reg_loss = self.embedding_user.weight.norm(2).pow(2) * self.args.l2_reg_u
+                reg_loss += (self.embedding_item.weight.norm(2).pow(2)+self.embedding_item_feats.weight.norm(2).pow(2)) * self.args.l2_reg_i
+                if self.num_user_feats > 0:
+                    reg_loss += self.embedding_user_feats.weight.norm(2).pow(2) * self.args.l2_reg_u
+                loss += reg_loss
         return loss

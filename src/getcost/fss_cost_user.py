@@ -32,8 +32,11 @@ if __name__ == "__main__":
             n_dense = dense_dict[model][j]
             m_phi = m_phi_list[j]
             eq = sycret.EqFactory(n_threads=6)
+            eq.key_len = 620
             t1 = time.time()
+            print(1)
             keys_a, keys_b = eq.keygen(m_phi)
+            print(1)
             ass = generate_ass(n_dense)
             t2 = time.time()
             print(f"Time to generate secret keys for GREC: {(t2-t1)*1000} ms")
@@ -41,3 +44,5 @@ if __name__ == "__main__":
             ass = generate_ass(n_spr+n_dense)
             t2 = time.time()
             print(f"Time to generate additive secrets: {(t2-t1)*1000} ms")
+            break
+        break
