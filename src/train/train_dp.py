@@ -169,6 +169,8 @@ def train_centralize_model(n_users, n_items, n_user_feat, n_item_feat, user_id_l
                 pbar.update(1)
                 pbar.set_postfix(loss=loss)
                 n_rounds += 1
+            if args.debug:
+                break
 
             if args.implicit:
                 hr, ndcg = test_model_implicit(model, test_dataset, user_id_list, args)

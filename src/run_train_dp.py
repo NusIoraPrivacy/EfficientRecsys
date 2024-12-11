@@ -17,7 +17,7 @@ if __name__ == "__main__":
     user_dict = get_feature_list(user_df)
     ratings_dict = get_rating_list(rating_df, args)
     train_data, test_data = train_test_split_dp(ratings_dict, args, item_dict, user_dict, item_id_list, neg_ratio)
-    train_data = fed2central(train_data)
+    train_data, test_data = fed2central(train_data), fed2central(test_data)
     # print(train_data[0])
     n_items = len(item_id_list)
     n_users = len(user_id_list)
