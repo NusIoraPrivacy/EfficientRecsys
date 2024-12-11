@@ -121,22 +121,31 @@ def train_centralize_model(n_users, n_items, n_user_feat, n_item_feat, user_id_l
 
                 clipped_grads = {name: torch.zeros_like(param) for name, param in model.named_parameters()}
                 loss = model.get_loss_central(predictions, true_rating, dp=True)
-                max_norm = 0
-                train_loss = 0
-                all_norms = []
-                for i in range(loss.size()[0]):
-                    train_loss += loss[i].item()
-                    loss[i].backward(retain_graph=True)
-                    # torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=self.args.norm_clip)
-                    grad_norm = get_gradient_norm(model, args)
-                    max_norm = max(max_norm, grad_norm)
-                    all_norms.append(grad_norm)
+                if args.noise_ratio == 0:
+                    loss = loss.sum()
+                    loss.backward(retain_graph=True)
                     for name, param in model.named_parameters():
                         clipped_grads[name] += param.grad 
-                        # if i == 0:
-                        #     print(name)
-                        #     print(param.grad[param.grad != 0])
                     model.zero_grad()
+                    max_norm = 0
+                    train_loss = loss.item()
+                else:
+                    max_norm = 0
+                    train_loss = 0
+                    all_norms = []
+                    for i in range(loss.size()[0]):
+                        train_loss += loss[i].item()
+                        loss[i].backward(retain_graph=True)
+                        # torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=self.args.norm_clip)
+                        grad_norm = get_gradient_norm(model, args)
+                        max_norm = max(max_norm, grad_norm)
+                        all_norms.append(grad_norm)
+                        for name, param in model.named_parameters():
+                            clipped_grads[name] += param.grad 
+                            # if i == 0:
+                            #     print(name)
+                            #     print(param.grad[param.grad != 0])
+                        model.zero_grad()
                 # print(max_norm)
                 # print(sum(all_norms)/len(all_norms))
                 # print(i)
@@ -187,10 +196,15 @@ def train_centralize_model(n_users, n_items, n_user_feat, n_item_feat, user_id_l
                 torch.save(model.state_dict(), f"{save_dir}/recsys_best_dim{int(args.n_factors)}_{args.implicit}")
                 patience = args.early_stop
                 # compute privacy budget
-                epsilon = gaussian_mechanism_dp(args.noise_ratio, args.delta, n_rounds)
+                if args.noise_ratio != 0:
+                    best_eps = gaussian_mechanism_dp(args.noise_ratio, args.delta, n_rounds)
+                else:
+                    best_eps = 0
+                pbar.set_postfix(loss=loss, rmse=rmse, mse=mse, mae=mae, best_eps=best_eps)
             else:
                 patience -= 1
                 if patience == 0:
                     finish = True
                     break
         print("Best performance:", best_res)
+        print("Total epsilon:", best_eps)
