@@ -8,22 +8,16 @@ from utils.globals import *
 if __name__ == "__main__":
     args = get_args()
     item_df, user_df, rating_df = load_data(args)
-    if args.implicit:
-        thd = pos_thd[args.dataset]
-        rating_df.loc[rating_df["Rating"] < thd, "Rating"] = 0
-        rating_df.loc[rating_df["Rating"] >= thd, "Rating"] = 1
     n_user_feat = user_df.shape[-1]-1
     n_item_feat = item_df.shape[-1]-1
     item_id_list = item_df.ItemID.unique()
     user_id_list = user_df.UserID.unique()
-    if args.implicit:
-        item_dict = get_feature_list(item_df)
-        user_dict = get_feature_list(user_df)
-        ratings_dict = get_rating_list(rating_df, args)
-        train_data, test_data = train_test_split_neg(ratings_dict, args, item_dict, user_dict, item_id_list, train=True)
-        train_data = fed2central(train_data)
-    else:
-        train_data, test_data = train_test_split_central(rating_df, args)
+    neg_ratio = neg_ratio_dict[args.dataset]
+    item_dict = get_feature_list(item_df)
+    user_dict = get_feature_list(user_df)
+    ratings_dict = get_rating_list(rating_df, args)
+    train_data, test_data = train_test_split_dp(ratings_dict, args, item_dict, user_dict, item_id_list, neg_ratio)
+    train_data = fed2central(train_data)
     # print(train_data[0])
     n_items = len(item_id_list)
     n_users = len(user_id_list)

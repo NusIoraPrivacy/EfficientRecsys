@@ -7,6 +7,10 @@ norm_dict = {"ml-100k": {"MF": (5, 2), "NCF": (0.52, 0.35), "FM": (1.5, 0.87, 0.
             "yelp": {"MF": (0.06, 4), "NCF": (0.90, 0.25), "FM": (0.16, 0, 1.5), "DeepFM": (0.14, 0, 1.8)},
             }
 
+sample_size_dict = {"ml-100k": 200, "ml-1m": 300, "ml-10m": 300, "ml-25m": 500, "yelp": 500}
+
+neg_ratio_dict = {"ml-100k": 1, "ml-1m": 1, "ml-10m": 1, "ml-25m": 2, "yelp": 3}
+
 distribution_dict = {"MF": (0.3, 1.5), "NCF": (0.01, 1.2)}
 
 rating_range = {"ml-1m": (1, 5), "bookcrossing": (0, 10), "yelp": (1, 5), "ml-100k": (1, 5), "ml-10m": (1, 5), "ml-25m": (0.5, 5.0)}

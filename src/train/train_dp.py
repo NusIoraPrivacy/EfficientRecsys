@@ -4,6 +4,7 @@ from tqdm import tqdm
 import os
 import random
 from utils.util import cal_metrics
+from utils.privacy_accountant import gaussian_mechanism_dp
 import copy
 import scipy.sparse as sp
 from scipy.sparse.linalg import spsolve
@@ -68,13 +69,13 @@ def get_gradient_norm(model, args):
     total_norm = total_norm ** (1. / 2)
     return total_norm
 
-def gaussian_noise(data_shape, epsilon, delta, norm_clip, args):
-    sigma = np.sqrt(2 * np.log(1.25 / delta)) / epsilon
-    return torch.normal(0, sigma * norm_clip, data_shape).to(args.device)
+def gaussian_noise(data_shape, norm_clip, noise_ratio, args):
+    return torch.normal(0, noise_ratio * norm_clip, data_shape).to(args.device)
 
 def train_centralize_model(n_users, n_items, n_user_feat, n_item_feat, user_id_list, train_data, test_data, model, args):
     model = model.to(args.device)
-    train_data, avg_n_per_u = sample_item_central(train_data, args)
+    n_sample_items = sample_size_dict[args.dataset]
+    train_data, avg_n_per_u = sample_item_central(train_data, args, n_sample_items)
     print(avg_n_per_u)
     train_dataset = CentralDataset(train_data, n_user_feat, n_item_feat, args)
     train_batch_size = int(args.batch_size * avg_n_per_u)
@@ -92,6 +93,7 @@ def train_centralize_model(n_users, n_items, n_user_feat, n_item_feat, user_id_l
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=milestones, gamma=0.5)
 
     best_res = 0 if args.implicit else 100
+    best_eps = 0
     save_dir = f"{args.root_path}/model/{args.dataset}/{args.model}"
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
@@ -102,7 +104,7 @@ def train_centralize_model(n_users, n_items, n_user_feat, n_item_feat, user_id_l
     with tqdm(total=total_rounds) as pbar:
         for epoch in range(args.epochs):
             if epoch > 0:
-                train_data, _ = sample_item_central(train_data, args)
+                train_data, _ = sample_item_central(train_data, args, n_sample_items)
                 train_dataset = CentralDataset(train_data, n_user_feat, n_item_feat, args)
                 train_loader = DataLoader(train_dataset, batch_size=train_batch_size, shuffle=True, pin_memory=True) # 50000
             loss_list = []
@@ -137,13 +139,14 @@ def train_centralize_model(n_users, n_items, n_user_feat, n_item_feat, user_id_l
                     model.zero_grad()
                 # print(max_norm)
                 # print(sum(all_norms)/len(all_norms))
+                # print(i)
 
                 private_params = private_param_dict[args.model]
                 for name, param in model.named_parameters():
                     if param.requires_grad:
                         this_grad = clipped_grads[name]
                         if name not in private_params:
-                            noises = gaussian_noise(this_grad.shape, args.epsilon, args.delta, max_norm, args)
+                            noises = gaussian_noise(this_grad.shape, max_norm, args.noise_ratio, args)
                             # print(name)
                             # print("gradients:", this_grad)
                             # print("noises:", noises)
@@ -165,6 +168,7 @@ def train_centralize_model(n_users, n_items, n_user_feat, n_item_feat, user_id_l
                 loss = np.mean(loss_list)
                 pbar.update(1)
                 pbar.set_postfix(loss=loss)
+                n_rounds += 1
 
             if args.implicit:
                 hr, ndcg = test_model_implicit(model, test_dataset, user_id_list, args)
@@ -180,6 +184,8 @@ def train_centralize_model(n_users, n_items, n_user_feat, n_item_feat, user_id_l
             if improved:
                 torch.save(model.state_dict(), f"{save_dir}/recsys_best_dim{int(args.n_factors)}_{args.implicit}")
                 patience = args.early_stop
+                # compute privacy budget
+                epsilon = gaussian_mechanism_dp(args.noise_ratio, args.delta, n_rounds)
             else:
                 patience -= 1
                 if patience == 0:

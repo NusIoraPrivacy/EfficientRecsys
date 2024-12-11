@@ -63,6 +63,7 @@ def get_args():
     parser.add_argument("--ter_quant", action="store_true", help = "ternary quantization")
     parser.add_argument("--delta", type=float, default=1e-4, 
                         help = "privacy budget")
+    parser.add_argument("--noise_ratio", type=float, default=4.5, help = "std divided by sensitivity")
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--debug", type=str2bool, default=False)
     args = parser.parse_args()

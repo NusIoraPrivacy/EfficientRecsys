@@ -110,6 +110,36 @@ def train_test_split_neg(ratings_dict, args, item_dict, user_dict, item_id_list,
         # print("After:", len(train_data[user_id]))
     return train_data, test_data
 
+def train_test_split_dp(ratings_dict, args, item_dict, user_dict, item_id_list, neg_ratio):
+    train_data = {}
+    test_data = {}
+    for user_id in tqdm(ratings_dict):
+        rating_list = ratings_dict[user_id]
+        random.shuffle(rating_list)
+        test_num = int(len(rating_list) * args.test_pct)
+        if test_num == 0:
+            train_data[user_id] = rating_list
+            test_data[user_id] = []
+            # print(user_id, len(rating_list))
+        else:
+            train_data[user_id] = rating_list[:-test_num]
+            test_data[user_id] = rating_list[-test_num:]
+        # sample negative items for test data
+        rated_items = [rate[0] for rate in rating_list]
+        unrated_items = list(set(item_id_list) - set(rated_items))
+        random.shuffle(unrated_items)
+        sample_neg_items = unrated_items[:100]
+        # print("Before:", len(train_data[user_id]))
+        train_len = len(train_data[user_id])
+        train_len = int(train_len * neg_ratio)
+        sample_neg_items = unrated_items[:train_len]
+        for item_id in sample_neg_items:
+            rating_vec = [item_id, 0]
+            rating_vec += item_dict[item_id]
+            rating_vec += user_dict[user_id]
+            train_data[user_id].append(tuple(rating_vec))
+    return train_data, test_data
+
 def fed2central(train_data):
     central_data = []
     for user_id in train_data:
@@ -124,13 +154,15 @@ def sample_negative(all_items, ratings_dict, user):
     available_items = all_items - positive_items
     return random.choice(list(available_items))
 
-def sample_item_central(train_data, args):
+def sample_item_central(train_data, args, n_sample_items=None):
     random.shuffle(train_data)
     sample_train_data = []
     n_per_user = defaultdict(int)
+    if n_sample_items is None:
+        n_sample_items = args.n_sample_items
     for rating_vector in train_data:
         user = rating_vector[0]
-        if n_per_user[user] < args.n_sample_items:
+        if n_per_user[user] < n_sample_items:
             n_per_user[user] += 1
             sample_train_data.append(rating_vector)
     avg_n_per_u = sum(n_per_user.values()) / len(n_per_user) 
