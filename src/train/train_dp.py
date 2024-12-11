@@ -63,7 +63,8 @@ def get_gradient_norm(model, args):
     private_params = private_param_dict[args.model]
     total_norm = 0
     for name, param in model.named_parameters():
-        if name not in private_params:
+        if (name not in private_params) and ("item_bias" not in name):
+        # if (name not in private_params):
             param_norm = param.grad.data.norm(2)
             total_norm += param_norm.item() ** 2
     total_norm = total_norm ** (1. / 2)
@@ -72,8 +73,36 @@ def get_gradient_norm(model, args):
 def gaussian_noise(data_shape, norm_clip, noise_ratio, args):
     return torch.normal(0, noise_ratio * norm_clip, data_shape).to(args.device)
 
+def avg_item_rating(train_data, n_items, args):
+    max_rate = rating_range[args.dataset][1]
+    avg_ratings = torch.zeros(n_items, device=args.device)
+    cnt_ratings = torch.zeros(n_items, device=args.device)
+    for user_rating_list in train_data:
+        item, rating = int(user_rating_list[1]), user_rating_list[2]
+        cnt_ratings[item] += 1
+        avg_ratings[item] += rating
+    # print("Total ratings: ")
+    # print(avg_ratings)
+    avg_ratings += gaussian_noise(avg_ratings.shape, max_rate, args.noise_ratio, args)
+    # print(avg_ratings)
+    # print("Total rating counts: ")
+    # print(cnt_ratings)
+    cnt_ratings += gaussian_noise(cnt_ratings.shape, 1, args.noise_ratio, args)
+    cnt_ratings[cnt_ratings <= 1] = 1
+    # print(cnt_ratings)
+    avg_ratings = avg_ratings / cnt_ratings
+    avg_ratings[avg_ratings < 0] = 0
+    avg_ratings[avg_ratings > max_rate] = max_rate
+    return avg_ratings
+
+
 def train_centralize_model(n_users, n_items, n_user_feat, n_item_feat, user_id_list, train_data, test_data, model, args):
     model = model.to(args.device)
+    for name, param in model.named_parameters():
+        if "item_bias" in name:
+            avg_ratings = avg_item_rating(train_data, n_items, args)
+            param.data = avg_ratings
+            # print(avg_ratings)
     n_sample_items = sample_size_dict[args.dataset]
     train_data, avg_n_per_u = sample_item_central(train_data, args, n_sample_items)
     print(avg_n_per_u)
@@ -98,7 +127,7 @@ def train_centralize_model(n_users, n_items, n_user_feat, n_item_feat, user_id_l
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
-    n_rounds = 0
+    n_rounds = 2 if args.model != "NCF" else 0
     patience = args.early_stop
     finish = False
     with tqdm(total=total_rounds) as pbar:
@@ -125,7 +154,8 @@ def train_centralize_model(n_users, n_items, n_user_feat, n_item_feat, user_id_l
                     loss = loss.sum()
                     loss.backward(retain_graph=True)
                     for name, param in model.named_parameters():
-                        clipped_grads[name] += param.grad 
+                        if "item_bias" not in name:
+                            clipped_grads[name] += param.grad
                     model.zero_grad()
                     max_norm = 0
                     train_loss = loss.item()
@@ -146,15 +176,15 @@ def train_centralize_model(n_users, n_items, n_user_feat, n_item_feat, user_id_l
                             #     print(name)
                             #     print(param.grad[param.grad != 0])
                         model.zero_grad()
-                # print(max_norm)
-                # print(sum(all_norms)/len(all_norms))
-                # print(i)
+                    # print(i)
+                    # print(max_norm)
+                    # print(sum(all_norms)/len(all_norms))
 
                 private_params = private_param_dict[args.model]
                 for name, param in model.named_parameters():
                     if param.requires_grad:
                         this_grad = clipped_grads[name]
-                        if name not in private_params:
+                        if name not in private_params and ("item_bias" not in name):
                             noises = gaussian_noise(this_grad.shape, max_norm, args.noise_ratio, args)
                             # print(name)
                             # print("gradients:", this_grad)
