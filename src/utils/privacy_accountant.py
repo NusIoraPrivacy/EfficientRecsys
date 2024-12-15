@@ -64,9 +64,18 @@ def sigma_to_eps(noise_ratio, delta):
 
 if __name__ == "__main__":
     # Example usage
-    noise_ratio = 50   # noise scale divided by sensitivity
+    noise_ratio = 10   # noise scale divided by sensitivity
     delta = 1e-4        # Target δ
-    iterations = 5000     # Number of iterations
+    iterations = 100     # Number of iterations
+    # 10, 100: 4.79
+    # 10, 1000: 18.58
+    # 10, 5000: 55.34
+    # 10, 10000: 92.96
+    # 40, 120: 1.21
+    # 40, 60: 0.85
+    # 40, 10000: 13.85
+    # 60, 10000: 8.54
+    # 100, 10000: 4.79
     orders = np.arange(1.01, 100, 0.1)  # Range of Renyi orders
 
     epsilon = gaussian_mechanism_dp(noise_ratio, delta, iterations, orders)
