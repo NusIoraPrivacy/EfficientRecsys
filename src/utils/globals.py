@@ -34,6 +34,13 @@ item_param_dict = {
                     "DeepFM": ["embedding_item.weight"],
                     }
 
+colr_param_dict = {
+                    "MF": ["A"], 
+                    "NCF": ["gmf_A", "ncf_A"],
+                    "FM": ["A"],
+                    "DeepFM": ["A"],
+                    }
+
 all_genre_dict = {
     "ml-1m": ['Animation', "Children's", 'Comedy', 'Adventure', 'Fantasy', 'Romance', 'Drama', 'Action', 'Crime', 'Thriller', 'Horror', 'Sci-Fi', 'Documentary', 'War', 'Musical', 'Mystery', 'Film-Noir', 'Western'],
     "ml-10m": ['Adventure', 'Animation', 'Children', 'Comedy', 'Fantasy', 'Romance', 'Drama', 'Action', 'Crime', 'Thriller', 'Horror', 'Mystery', 'Sci-Fi', 'IMAX', 'Documentary', 'War', 'Musical', 'Film-Noir', 'Western', '(no genres listed)'],

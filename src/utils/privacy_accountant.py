@@ -64,9 +64,9 @@ def sigma_to_eps(noise_ratio, delta):
 
 if __name__ == "__main__":
     # Example usage
-    noise_ratio = 10   # noise scale divided by sensitivity
+    noise_ratio = 100   # noise scale divided by sensitivity
     delta = 1e-4        # Target δ
-    iterations = 100     # Number of iterations
+    iterations = 1000     # Number of iterations
     # 10, 100: 4.79
     # 10, 1000: 18.58
     # 10, 5000: 55.34

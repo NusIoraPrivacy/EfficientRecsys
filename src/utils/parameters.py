@@ -35,7 +35,7 @@ def get_args():
                         help = "learning rate for recsys")
     parser.add_argument("--d_lr", type=float, default=0.05, 
                         help = "learning rate for denoise model")
-    parser.add_argument("--batch_size", type=int, default=100, 
+    parser.add_argument("--batch_size", type=int, default=500, 
                         help = "number of selected client per iteration")
     parser.add_argument("--early_stop", type=int, default=20, 
                         help = "number of rounds/patience for early stop")
@@ -66,5 +66,8 @@ def get_args():
     parser.add_argument("--noise_ratio", type=float, default=4.5, help = "std divided by sensitivity")
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--debug", type=str2bool, default=False)
+    parser.add_argument("--rank", type=int, default=4)
+    parser.add_argument("--topk_ratio", type=int, default=4)
+    parser.add_argument("--compress", type=str, default="svd", choices=["svd", "ternquant", "8intquant"])
     args = parser.parse_args()
     return args
