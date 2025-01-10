@@ -16,6 +16,7 @@ class MF(nn.Module):
         self.item_bias = nn.Parameter(torch.zeros(num_items))
         self.A = nn.Parameter(torch.zeros(num_items, args.rank))
         self.B = torch.zeros(args.rank, args.n_factors).to(args.device)
+        nn.init.normal_(self.B, mean=0, std=1*math.sqrt(1/args.rank))
         self.args = args
         self.num_users = num_users
         self.num_items = num_items
@@ -54,6 +55,17 @@ class MF(nn.Module):
             item_emb_mat = self.A @ self.B + self.embedding_item.weight
             reg_loss = self.embedding_user.weight.norm(2).pow(2) * self.args.l2_reg_u + item_emb_mat.norm(2).pow(2) * self.args.l2_reg_i
             loss += reg_loss
+        return loss
+    
+    def get_loss_central(self, ratings, predictions, dp=False):
+        if dp:
+            loss = (ratings - predictions) ** 2
+            loss = loss/len(ratings)
+        else:
+            loss = torch.mean((ratings - predictions) ** 2)
+            if self.args.regularization:
+                reg_loss = self.embedding_user.weight.norm(2).pow(2) * self.args.l2_reg_u + self.embedding_item.weight.norm(2).pow(2) * self.args.l2_reg_i
+                loss += reg_loss
         return loss
 
 # neural collaborative filtering
@@ -195,7 +207,7 @@ class FM(nn.Module):
     def reset_A(self):
         nn.init.zeros_(self.A)
     
-    def forward(self, user_ids, item_ids, user_feats, item_feats, train=True):
+    def forward(self, user_ids, item_ids, user_feats, item_feats, train=True, **kwargs):
         user_ids = user_ids.unsqueeze(dim=1) # (item_size, 1)
         user_embs = self.embedding_user(user_ids) # (item_size, 1, emb_dim)
         if self.num_user_feats > 0:
@@ -302,7 +314,7 @@ class DeepFM(nn.Module):
     def reset_A(self):
         nn.init.zeros_(self.A)
 
-    def forward(self, user_ids, item_ids, user_feats, item_feats, train=True):
+    def forward(self, user_ids, item_ids, user_feats, item_feats, train=True, **kwargs):
         user_ids = user_ids.unsqueeze(dim=1) # (item_size, 1)
         user_embs = self.embedding_user(user_ids) # (item_size, 1, emb_dim)
         if self.num_user_feats > 0:

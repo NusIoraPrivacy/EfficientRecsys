@@ -26,7 +26,7 @@ def test_model(model, test_loader, args):
             if args.model in models_w_feats:
                 user_feat = user_feat.to(args.device)
                 item_feat = item_feat.to(args.device)
-            pred = model(this_users, this_items, user_feats=user_feat, item_feats=item_feat)
+            pred = model(this_users, this_items, user_feats=user_feat, item_feats=item_feat, train=False)
             # obtain rmse
             real_label.extend(true_rating.tolist())
             prediction.extend(pred.tolist())
@@ -76,6 +76,7 @@ def train_centralize_model(n_users, n_items, n_user_feat, n_item_feat, user_id_l
     optimizer = torch.optim.Adam(model.parameters(), betas=(0.9, 0.99), lr=args.lr)
     milestones = [total_rounds*i//20 for i in range(1, 10)]
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=milestones, gamma=0.5)
+    item_params = item_param_dict[args.model]
 
     best_res = 0 if args.implicit else 100
     save_dir = f"{args.root_path}/model/{args.dataset}/{args.model}"
@@ -93,6 +94,8 @@ def train_centralize_model(n_users, n_items, n_user_feat, n_item_feat, user_id_l
                 train_loader = DataLoader(train_dataset, batch_size=train_batch_size, shuffle=True, pin_memory=True) # 50000
             loss_list = []
             for batch in train_loader:
+                if args.compress == "colr":
+                    model.reset_A()
                 # User updates
                 this_users, this_items, true_rating, item_feat, user_feat = batch
                 this_users = this_users.to(args.device)
@@ -105,26 +108,42 @@ def train_centralize_model(n_users, n_items, n_user_feat, n_item_feat, user_id_l
                 loss = model.get_loss_central(predictions, true_rating)
                 loss.backward()
                 # ternary quantization
-                if args.ter_quant:
-                    max_grad = 0
-                    for param in model.parameters():
-                        max_grad = max(max_grad, torch.abs(param.grad).max().item())
-                    for param in model.parameters():
-                        probs = torch.abs(param.grad) / max_grad
-                        rand_values = torch.rand(param.grad.shape, device=probs.device)
-                        binary_vec = (rand_values >= probs).float()
-                        ternary_grads = binary_vec * torch.sign(param.grad) * max_grad
-                        param.grad = ternary_grads
-                    # for param in model.parameters():
-                    #     print(param.grad)
+                if args.compress == "svd":
+                    for name, param in model.named_parameters():
+                        if name in item_params:
+                            matrix_cpu = param.grad.cpu()
+                            U_cpu, S_cpu, V_cpu = torch.svd(matrix_cpu)
+                            # print(U_cpu.shape, S_cpu.shape, V_cpu.shape)
+                            U_cpu, S_cpu, V_cpu = U_cpu[:, :args.rank], S_cpu[:args.rank], V_cpu[:, :args.rank]
+                            U, S, V = U_cpu.to(args.device), S_cpu.to(args.device), V_cpu.to(args.device)
+                            param.grad = torch.mm(torch.mm(U, torch.diag(S)), V.t())
+                elif args.compress == "ternquant":
+                    for name, param in model.named_parameters():
+                        if name in item_params:
+                            max_grad = torch.abs(param.grad).max().item()
+                            probs = torch.abs(param.grad) / max_grad
+                            rand_values = torch.rand(param.grad.shape, device=probs.device)
+                            binary_vec = (rand_values >= probs).float()
+                            ternary_grads = binary_vec * torch.sign(param.grad) * max_grad
+                            param.grad = ternary_grads
+                elif args.compress == "8intquant":
+                    for name, param in model.named_parameters():
+                        if name in item_params:
+                            quant_grad = torch.quantize_per_tensor(param.grad, 0.00001, 0, torch.qint8) 
+                            quant_grad = torch.dequantize(quant_grad)
+                            param.grad = quant_grad
                 loss_list.append(loss.item())
                 optimizer.step()
                 # scheduler.step()
                 optimizer.zero_grad()
+                if args.compress == "colr":
+                    model.update_params()
                 torch.cuda.empty_cache()
                 loss = np.mean(loss_list)
                 pbar.update(1)
                 pbar.set_postfix(loss=loss)
+                if args.debug:
+                    break
 
             if args.implicit:
                 hr, ndcg = test_model_implicit(model, test_dataset, user_id_list, args)

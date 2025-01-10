@@ -223,7 +223,7 @@ class FM(nn.Module):
         noise = users_emb - init_user_emb
         return users_emb, noise, init_user_emb
 
-    def forward(self, user_ids, item_ids, user_feats, item_feats, noise_std=0):
+    def forward(self, user_ids, item_ids, user_feats, item_feats, noise_std=0, **kwargs):
         user_ids = user_ids.unsqueeze(dim=1) # (item_size, 1)
         user_embs = self.embedding_user(user_ids) # (item_size, 1, emb_dim)
         if noise_std > 0:
@@ -355,7 +355,7 @@ class DeepFM(nn.Module):
         noise = users_emb - init_user_emb
         return users_emb, noise, init_user_emb
         
-    def forward(self, user_ids, item_ids, user_feats, item_feats, noise_std=0):
+    def forward(self, user_ids, item_ids, user_feats, item_feats, noise_std=0, **kwargs):
         user_ids = user_ids.unsqueeze(dim=1) # (item_size, 1)
         user_embs = self.embedding_user(user_ids) # (item_size, 1, emb_dim)
         if noise_std > 0:

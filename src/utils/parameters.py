@@ -68,6 +68,6 @@ def get_args():
     parser.add_argument("--debug", type=str2bool, default=False)
     parser.add_argument("--rank", type=int, default=4)
     parser.add_argument("--topk_ratio", type=int, default=4)
-    parser.add_argument("--compress", type=str, default="svd", choices=["svd", "ternquant", "8intquant"])
+    parser.add_argument("--compress", type=str, default="none", choices=["none", "svd", "ternquant", "8intquant", "colr"])
     args = parser.parse_args()
     return args
