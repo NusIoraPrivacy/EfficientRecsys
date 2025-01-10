@@ -73,7 +73,7 @@ def get_gradient_norm(model, args):
 def gaussian_noise(data_shape, norm_clip, noise_ratio, args):
     return torch.normal(0, noise_ratio * norm_clip, data_shape).to(args.device)
 
-def avg_item_rating(train_data, n_items, args):
+def avg_item_rating(train_data, n_items, args, local_dp=False):
     max_rate = rating_range[args.dataset][1]
     avg_ratings = torch.zeros(n_items, device=args.device)
     cnt_ratings = torch.zeros(n_items, device=args.device)
@@ -83,7 +83,10 @@ def avg_item_rating(train_data, n_items, args):
         avg_ratings[item] += rating
     # print("Total ratings: ")
     # print(avg_ratings)
-    avg_ratings += gaussian_noise(avg_ratings.shape, max_rate, args.noise_ratio, args)
+    if local_dp:
+        avg_ratings += gaussian_noise(avg_ratings.shape, max_rate, args.noise_ratio*(args.batch_size**0.5), args)
+    else:
+        avg_ratings += gaussian_noise(avg_ratings.shape, max_rate, args.noise_ratio, args)
     # print(avg_ratings)
     # print("Total rating counts: ")
     # print(cnt_ratings)
@@ -96,11 +99,11 @@ def avg_item_rating(train_data, n_items, args):
     return avg_ratings
 
 
-def train_centralize_model(n_users, n_items, n_user_feat, n_item_feat, user_id_list, train_data, test_data, model, args):
+def train_centralize_model(n_users, n_items, n_user_feat, n_item_feat, user_id_list, train_data, test_data, model, args, local_dp=False):
     model = model.to(args.device)
     for name, param in model.named_parameters():
         if "item_bias" in name:
-            avg_ratings = avg_item_rating(train_data, n_items, args)
+            avg_ratings = avg_item_rating(train_data, n_items, args, local_dp=local_dp)
             param.data = avg_ratings
             # print(avg_ratings)
     n_sample_items = sample_size_dict[args.dataset]
@@ -185,7 +188,10 @@ def train_centralize_model(n_users, n_items, n_user_feat, n_item_feat, user_id_l
                     if param.requires_grad:
                         this_grad = clipped_grads[name]
                         if name not in private_params and ("item_bias" not in name):
-                            noises = gaussian_noise(this_grad.shape, max_norm, args.noise_ratio, args)
+                            if local_dp:
+                                noises = gaussian_noise(this_grad.shape, max_norm, args.noise_ratio*(args.batch_size**0.5), args)
+                            else:
+                                noises = gaussian_noise(this_grad.shape, max_norm, args.noise_ratio, args)
                             # print(name)
                             # print("gradients:", this_grad)
                             # print("noises:", noises)
