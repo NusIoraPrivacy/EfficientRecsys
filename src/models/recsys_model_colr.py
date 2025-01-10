@@ -64,7 +64,8 @@ class MF(nn.Module):
         else:
             loss = torch.mean((ratings - predictions) ** 2)
             if self.args.regularization:
-                reg_loss = self.embedding_user.weight.norm(2).pow(2) * self.args.l2_reg_u + self.embedding_item.weight.norm(2).pow(2) * self.args.l2_reg_i
+                item_emb_mat = self.A @ self.B + self.embedding_item.weight
+                reg_loss = self.embedding_user.weight.norm(2).pow(2) * self.args.l2_reg_u + item_emb_mat.norm(2).pow(2) * self.args.l2_reg_i
                 loss += reg_loss
         return loss
 
@@ -77,9 +78,9 @@ class NCF(nn.Module):
         self.ncf_embedding_user = nn.Embedding(
             num_embeddings=num_users, embedding_dim=args.n_factors * 2)
         self.gmf_embedding_item = nn.Embedding(
-            num_embeddings=num_items, embedding_dim=args.n_factors * 2)
+            num_embeddings=num_items, embedding_dim=args.n_factors * 2).requires_grad_(False)
         self.ncf_embedding_item = nn.Embedding(
-            num_embeddings=num_items, embedding_dim=args.n_factors * 2)
+            num_embeddings=num_items, embedding_dim=args.n_factors * 2).requires_grad_(False)
         self.gmf_A = nn.Parameter(torch.zeros(num_items, args.rank))
         self.ncf_A = nn.Parameter(torch.zeros(num_items, args.rank))
         self.gmf_B = torch.zeros(args.rank, args.n_factors * 2).to(args.device)
@@ -162,7 +163,9 @@ class NCF(nn.Module):
             loss = torch.mean((ratings - predictions) ** 2)
             if self.args.regularization:
                 reg_loss = (self.gmf_embedding_user.weight.norm(2).pow(2)+self.ncf_embedding_user.weight.norm(2).pow(2)) * self.args.l2_reg_u
-                reg_loss += (self.gmf_embedding_item.weight.norm(2).pow(2)+self.ncf_embedding_item.weight.norm(2).pow(2)) * self.args.l2_reg_i
+                gmf_item_emb_mat = self.gmf_A @ self.gmf_B + self.gmf_embedding_item.weight
+                ncf_item_emb_mat = self.ncf_A @ self.ncf_B + self.ncf_embedding_item.weight
+                reg_loss += (gmf_item_emb_mat.norm(2).pow(2)+ncf_item_emb_mat.norm(2).pow(2)) * self.args.l2_reg_i
                 loss += reg_loss
         return loss
 
@@ -172,7 +175,7 @@ class FM(nn.Module):
         self.embedding_user = nn.Embedding(
             num_embeddings=num_users, embedding_dim=args.n_factors)
         self.embedding_item = nn.Embedding(
-            num_embeddings=num_items, embedding_dim=args.n_factors)
+            num_embeddings=num_items, embedding_dim=args.n_factors).requires_grad_(False)
         self.embedding_item_feats = nn.Embedding(
             num_embeddings=num_item_feats, embedding_dim=args.n_factors)
         self.user_bias = nn.Parameter(torch.zeros(num_users))
@@ -253,7 +256,8 @@ class FM(nn.Module):
             loss = torch.mean((ratings - predictions) ** 2)
             if self.args.regularization:
                 reg_loss = self.embedding_user.weight.norm(2).pow(2) * self.args.l2_reg_u
-                reg_loss += (self.embedding_item.weight.norm(2).pow(2)+self.embedding_item_feats.weight.norm(2).pow(2)) * self.args.l2_reg_i
+                item_emb_mat = self.A @ self.B + self.embedding_item.weight
+                reg_loss += (item_emb_mat.norm(2).pow(2)+self.embedding_item_feats.weight.norm(2).pow(2)) * self.args.l2_reg_i
                 if self.num_user_feats > 0:
                     reg_loss += self.embedding_user_feats.weight.norm(2).pow(2) * self.args.l2_reg_u
                 loss += reg_loss
@@ -265,7 +269,7 @@ class DeepFM(nn.Module):
         self.embedding_user = nn.Embedding(
             num_embeddings=num_users, embedding_dim=args.n_factors)
         self.embedding_item = nn.Embedding(
-            num_embeddings=num_items, embedding_dim=args.n_factors)
+            num_embeddings=num_items, embedding_dim=args.n_factors).requires_grad_(False)
         
         self.embedding_item_feats = nn.Embedding(
             num_embeddings=num_item_feats, embedding_dim=args.n_factors)
@@ -361,7 +365,8 @@ class DeepFM(nn.Module):
             loss = torch.mean((ratings - predictions) ** 2)
             if self.args.regularization:
                 reg_loss = self.embedding_user.weight.norm(2).pow(2) * self.args.l2_reg_u
-                reg_loss += (self.embedding_item.weight.norm(2).pow(2)+self.embedding_item_feats.weight.norm(2).pow(2)) * self.args.l2_reg_i
+                item_emb_mat = self.A @ self.B + self.embedding_item.weight
+                reg_loss += (item_emb_mat.norm(2).pow(2)+self.embedding_item_feats.weight.norm(2).pow(2)) * self.args.l2_reg_i
                 if self.num_user_feats > 0:
                     reg_loss += self.embedding_user_feats.weight.norm(2).pow(2) * self.args.l2_reg_u
                 loss += reg_loss
