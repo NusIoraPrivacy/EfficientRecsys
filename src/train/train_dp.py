@@ -73,7 +73,7 @@ def get_gradient_norm(model, args):
 def gaussian_noise(data_shape, norm_clip, noise_ratio, args):
     return torch.normal(0, noise_ratio * norm_clip, data_shape).to(args.device)
 
-def avg_item_rating(train_data, n_items, args, local_dp=False):
+def avg_item_rating(train_data, n_items, args, local_dp=False, n_users=None):
     max_rate = rating_range[args.dataset][1]
     avg_ratings = torch.zeros(n_items, device=args.device)
     cnt_ratings = torch.zeros(n_items, device=args.device)
@@ -84,7 +84,7 @@ def avg_item_rating(train_data, n_items, args, local_dp=False):
     # print("Total ratings: ")
     # print(avg_ratings)
     if local_dp:
-        avg_ratings += gaussian_noise(avg_ratings.shape, max_rate, args.noise_ratio*(args.batch_size**0.5), args)
+        avg_ratings += gaussian_noise(avg_ratings.shape, max_rate, args.noise_ratio*(n_users**0.5), args)
     else:
         avg_ratings += gaussian_noise(avg_ratings.shape, max_rate, args.noise_ratio, args)
     # print(avg_ratings)
@@ -103,7 +103,7 @@ def train_centralize_model(n_users, n_items, n_user_feat, n_item_feat, user_id_l
     model = model.to(args.device)
     for name, param in model.named_parameters():
         if "item_bias" in name:
-            avg_ratings = avg_item_rating(train_data, n_items, args, local_dp=local_dp)
+            avg_ratings = avg_item_rating(train_data, n_items, args, local_dp=local_dp, n_users=n_users)
             param.data = avg_ratings
             # print(avg_ratings)
     n_sample_items = sample_size_dict[args.dataset]
