@@ -15,7 +15,7 @@ distribution_dict = {"MF": (0.3, 1.5), "NCF": (0.01, 1.2)}
 
 rating_range = {"ml-1m": (1, 5), "bookcrossing": (0, 10), "yelp": (1, 5), "ml-100k": (1, 5), "ml-10m": (1, 5), "ml-25m": (0.5, 5.0)}
 
-pos_thd = {"ml-1m": 4, "bookcrossing": 6, "yelp": 4, "ml-100k": 4, "ml-10m": 4, "ml-25m": 4}
+pos_thd = {"ml-1m": 4, "bookcrossing": 6, "yelp": 4, "ml-100k": 4, "ml-10m": 4, "ml-25m": 4, "amazon": 4}
 
 # rating_thds = {"bookcrossing": (5, 10)} # (15, 15) 10391 items + 4517 users average 69 rated per user
 rating_thds = {"bookcrossing": (15, 15)} # (15, 15) 10391 items + 4517 users average 69 rated per user

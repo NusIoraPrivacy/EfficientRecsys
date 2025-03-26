@@ -11,8 +11,8 @@ def generate_ass(n):
 
 if __name__ == "__main__":
     datasets = ["ml100k", "ml1m", "ml10m", "ml25m", "yelp"]
-    # models = ["MF", "NCF", "FM", "DeepFM"]
-    models = ["NCF"]
+    models = ["MF", "NCF", "FM", "DeepFM"]
+    # models = ["NCF"]
     spr_dict = {"MF": [109330, 252395, 694256, 4057495, 6070090],
                 "NCF": [55506, 128139, 523369, 3058727, 3828826],
                 "FM": [109330, 252395, 694256, 4057495, 6070090],
@@ -23,6 +23,7 @@ if __name__ == "__main__":
                 "FM": [6969, 3121, 1301, 1301, 1401],
                 "DeepFM": [1761065, 856370, 395798, 395798, 330002],
                 }
+    
     m_phi_list = [200, 300, 300, 500, 500]
 
     for i, model in enumerate(models):
@@ -32,17 +33,20 @@ if __name__ == "__main__":
             n_dense = dense_dict[model][j]
             m_phi = m_phi_list[j]
             eq = sycret.EqFactory(n_threads=6)
-            eq.key_len = 620
+            # print(eq.key_len)
+            # eq.key_len = 620
             t1 = time.time()
-            print(1)
+            # print(1)
+            # for i in range(2):
             keys_a, keys_b = eq.keygen(m_phi)
-            print(1)
+            # print(keys_a.shape)
+            # print(1)
             ass = generate_ass(n_dense)
             t2 = time.time()
-            print(f"Time to generate secret keys for GREC: {(t2-t1)*1000} ms")
-            t1 = time.time()
-            ass = generate_ass(n_spr+n_dense)
-            t2 = time.time()
-            print(f"Time to generate additive secrets: {(t2-t1)*1000} ms")
-            break
-        break
+            print(f"Time to generate secret keys for SecEmb: {(t2-t1)*1000} ms")
+            # t1 = time.time()
+            # ass = generate_ass(n_spr+n_dense)
+            # t2 = time.time()
+            # print(f"Time to generate additive secrets: {(t2-t1)*1000} ms")
+        #     break
+        # break
