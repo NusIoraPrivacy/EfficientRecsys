@@ -64,7 +64,7 @@ def get_args():
     parser.add_argument("--delta", type=float, default=1e-4, 
                         help = "privacy budget")
     parser.add_argument("--noise_ratio", type=float, default=4.5, help = "std divided by sensitivity")
-    parser.add_argument("--device", type=str, default="cuda")
+    parser.add_argument("--device", type=str, default="cuda:3")
     parser.add_argument("--debug", type=str2bool, default=False)
     parser.add_argument("--rank", type=int, default=4)
     parser.add_argument("--topk_ratio", type=int, default=4)

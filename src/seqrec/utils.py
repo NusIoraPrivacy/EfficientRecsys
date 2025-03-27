@@ -19,16 +19,16 @@ def get_args():
     parser.add_argument('--lr', default=0.001, type=float)
     parser.add_argument('--hidden_units', default=50, type=int)
     parser.add_argument('--num_blocks', default=2, type=int)
-    parser.add_argument('--num_epochs', default=200, type=int)
+    parser.add_argument('--num_epochs', default=50, type=int)
     parser.add_argument('--num_heads', default=1, type=int)
     parser.add_argument('--dropout_rate', default=0.2, type=float)
     parser.add_argument('--l2_emb', default=0.0, type=float)
-    parser.add_argument('--device', default='cuda:3', type=str)
+    parser.add_argument('--device', default='cuda:2', type=str)
     parser.add_argument('--inference_only', default=False, type=str2bool)
-    parser.add_argument("--early_stop", type=int, default=20, 
+    parser.add_argument("--early_stop", type=int, default=5, 
                         help = "number of rounds/patience for early stop")
     parser.add_argument("--rank", type=int, default=8)
-    parser.add_argument("--compress", type=str, default="none", choices=["none", "svd", "ternquant", "8intquant", "colr"])
+    parser.add_argument("--compress", type=str, default="colr", choices=["none", "svd", "ternquant", "8intquant", "colr"])
     args = parser.parse_args()
     return args
 

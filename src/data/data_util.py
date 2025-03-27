@@ -413,15 +413,7 @@ def load_data(args):
         rating_path = f"{data_path}/BX-Book-Ratings.csv"
         rating_df = pd.read_csv(rating_path, delimiter=';', encoding="iso-8859-1")
         rating_df.columns = ["UserID", "ItemID", "Rating"]
-        # top_items = rating_df.groupby('ItemID')['Rating'].count()
-        # item_thd, user_thd = rating_thds["bookcrossing"]
-        # top_items = top_items[top_items >= item_thd]
-        # top_items = top_items.index
-        # rating_df = rating_df[rating_df['ItemID'].isin(top_items)]
-        # top_users = rating_df.groupby('UserID')['Rating'].count()
-        # top_users = top_users[top_users >= user_thd]
-        # print(top_users.mean())
-        # top_users = top_users.index
+
         top_users = rating_df.groupby('UserID')['Rating'].count()
         top_users = top_users.sort_values(ascending=False)[:6000].index
         rating_df = rating_df[rating_df['UserID'].isin(top_users)]
@@ -430,7 +422,6 @@ def load_data(args):
         rating_df = rating_df[rating_df['ItemID'].isin(top_items)]
         avg_users = rating_df.groupby('UserID')['Rating'].count()
         print(avg_users.mean())
-        # top_users = np.random.choice(top_users, 6000, replace=False)
         
         item_path = f"{data_path}/BX_Books.csv"
         item_df = pd.read_csv(item_path, delimiter=';', encoding="iso-8859-1")
@@ -450,11 +441,29 @@ def load_data(args):
         item_df = process_item_df(item_df, args)
         print(item_df.shape)
         print(user_df.shape)
-        # print(filter_user_df.shape)
-        # print(filter_item_df.shape)
         combine_df = rating_df.merge(item_df, on="ItemID", how='left')
         combine_df = combine_df.merge(user_df, on="UserID", how='left')
         avg_rating = combine_df["Rating"].mean()
         base_rmse = np.sqrt(((combine_df["Rating"] - avg_rating) ** 2).mean())
         print("baseline rmse:", base_rmse)
+        return item_df, user_df, combine_df
+
+    if args.dataset == "amazon":
+        # rating_path = f"{data_path}/item_dedup.csv"
+        rating_path = f"{data_path}/ratings_Beauty.csv"
+        rating_df = pd.read_csv(rating_path, header=None, names=["UserID", "ItemID", "Rating", "Timestamp"], encoding="iso-8859-1")
+        top_users = rating_df.groupby('UserID')['Rating'].count()
+        top_users = top_users[top_users>=3].index
+        # print(top_users)
+        rating_df = rating_df[rating_df['UserID'].isin(top_users)]
+        unique_user_ids = rating_df.UserID.unique()
+        unique_item_ids = rating_df.ItemID.unique()
+        item_df = pd.DataFrame(data={"ItemID": unique_item_ids})
+        user_df = pd.DataFrame(data={"UserID": unique_user_ids})
+        item_df, user_df, rating_df = standard_id(item_df, user_df, rating_df)
+        rating_per_user = rating_df.groupby("UserID")["Rating"].count()
+        # print("max item features:", item_df.drop("ItemID", axis=1).values.sum(axis=1).max())
+        # print("average item features:", item_df.drop("ItemID", axis=1).values.sum(axis=1).mean())
+        combine_df = rating_df.merge(item_df, on="ItemID", how='left')
+        combine_df.drop("Timestamp", axis=1, inplace=True)
         return item_df, user_df, combine_df
