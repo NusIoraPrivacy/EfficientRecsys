@@ -23,12 +23,20 @@ def get_args():
     parser.add_argument('--num_heads', default=1, type=int)
     parser.add_argument('--dropout_rate', default=0.2, type=float)
     parser.add_argument('--l2_emb', default=0.0, type=float)
-    parser.add_argument('--device', default='cuda:2', type=str)
+    parser.add_argument('--device', default='cuda:1', type=str)
     parser.add_argument('--inference_only', default=False, type=str2bool)
     parser.add_argument("--early_stop", type=int, default=5, 
                         help = "number of rounds/patience for early stop")
     parser.add_argument("--rank", type=int, default=8)
-    parser.add_argument("--compress", type=str, default="colr", choices=["none", "svd", "ternquant", "8intquant", "colr"])
+    parser.add_argument("--compress", type=str, default="ternquant", choices=["none", "svd", "ternquant", "8intquant", "colr"])
+    parser.add_argument('--ac_conv', type=str, default='relu')
+    parser.add_argument('--ac_fc', type=str, default='relu')
+    parser.add_argument('--L', type=int, default=5)
+    parser.add_argument('--T', type=int, default=3)
+    parser.add_argument('--d', type=int, default=50)
+    parser.add_argument('--nv', type=int, default=4)
+    parser.add_argument('--nh', type=int, default=16)
+    parser.add_argument('--drop', type=float, default=0.5)
     args = parser.parse_args()
     return args
 
@@ -45,6 +53,7 @@ def load_data(args):
     for i, itemid in enumerate(itemIDs):
         itemid2encode[itemid] = i
     rating_df['ItemID'] = rating_df['ItemID'].apply(lambda x: itemid2encode[x])
+    rating_df['ItemID'] = rating_df['ItemID'] + 1
     # list items per user
     n_items = len(itemid2encode)
     rating_df = rating_df.sort_values(by='TimeStamp', ascending=True)
@@ -91,11 +100,11 @@ class SeqDataset(Dataset):
     def __getitem__(self, uid):
         ts = set(self.user_data[uid])
 
-        seq = torch.zeros([self.args.maxlen], dtype=torch.int)
-        pos = torch.zeros([self.args.maxlen], dtype=torch.int)
-        neg = torch.zeros([self.args.maxlen], dtype=torch.int)
+        seq = torch.zeros([self.args.L], dtype=torch.int)
+        pos = torch.zeros([self.args.L], dtype=torch.int)
+        neg = torch.zeros([self.args.L], dtype=torch.int)
         nxt = self.user_data[uid][-1]
-        idx = self.args.maxlen - 1
+        idx = self.args.L - 1
 
         for i in reversed(self.user_data[idx][:-1]):
             seq[idx] = i
@@ -106,6 +115,17 @@ class SeqDataset(Dataset):
             if idx == -1: break
         uid = torch.tensor([uid])
         return uid, seq, pos, neg
+
+def get_sparse_dense_size(model, args):
+    dense_size = 0
+    sparse_size = 0
+    for name, param in model.named_parameters():
+        if "user_emb" not in name:
+            if "item_emb" not in name:
+                dense_size += torch.numel(param)
+            else:
+                sparse_size += torch.numel(param)
+    return dense_size, sparse_size
 
 if __name__ == "__main__":
     args = get_args()

@@ -56,6 +56,8 @@ if __name__ == '__main__':
     train_dataset = SeqDataset(user_train, n_users, n_items, args)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, pin_memory=True)
     model = SASRec(n_users, n_items, args).to(args.device)
+    dense_size, sparse_size = get_sparse_dense_size(model, args)
+    print(f"Size of Dense Vector: {dense_size}, size of sparse vector: {sparse_size}")
     if args.compress == "colr":
         model = SASRec_CoLR(n_users, n_items, args).to(args.device)
 
