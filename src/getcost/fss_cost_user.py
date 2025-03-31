@@ -1,5 +1,3 @@
-from Crypto.Cipher import AES
-from Crypto.Util import Counter
 import sycret
 import os
 import time
