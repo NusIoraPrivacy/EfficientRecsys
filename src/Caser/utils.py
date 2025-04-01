@@ -23,12 +23,12 @@ def get_args():
     parser.add_argument('--num_heads', default=1, type=int)
     parser.add_argument('--dropout_rate', default=0.2, type=float)
     parser.add_argument('--l2_emb', default=0.0, type=float)
-    parser.add_argument('--device', default='cuda:1', type=str)
+    parser.add_argument('--device', default='cuda:3', type=str)
     parser.add_argument('--inference_only', default=False, type=str2bool)
     parser.add_argument("--early_stop", type=int, default=5, 
                         help = "number of rounds/patience for early stop")
     parser.add_argument("--rank", type=int, default=8)
-    parser.add_argument("--compress", type=str, default="ternquant", choices=["none", "svd", "ternquant", "8intquant", "colr"])
+    parser.add_argument("--compress", type=str, default="colr", choices=["none", "svd", "ternquant", "8intquant", "colr"])
     parser.add_argument('--ac_conv', type=str, default='relu')
     parser.add_argument('--ac_fc', type=str, default='relu')
     parser.add_argument('--L', type=int, default=5)
@@ -53,7 +53,7 @@ def load_data(args):
     for i, itemid in enumerate(itemIDs):
         itemid2encode[itemid] = i
     rating_df['ItemID'] = rating_df['ItemID'].apply(lambda x: itemid2encode[x])
-    rating_df['ItemID'] = rating_df['ItemID'] + 1
+    # rating_df['ItemID'] = rating_df['ItemID'] + 1
     # list items per user
     n_items = len(itemid2encode)
     rating_df = rating_df.sort_values(by='TimeStamp', ascending=True)
@@ -109,7 +109,7 @@ class SeqDataset(Dataset):
         for i in reversed(self.user_data[idx][:-1]):
             seq[idx] = i
             pos[idx] = nxt
-            if nxt != 0: neg[idx] = random_neq(1, self.n_items + 1, ts)
+            if nxt != 0: neg[idx] = random_neq(1, self.n_items, ts)
             nxt = i
             idx -= 1
             if idx == -1: break
@@ -121,7 +121,7 @@ def get_sparse_dense_size(model, args):
     sparse_size = 0
     for name, param in model.named_parameters():
         if "user_emb" not in name:
-            if "item_emb" not in name:
+            if name not in ["item_embeddings.weight", "W2.weight", "b2.weight"]:
                 dense_size += torch.numel(param)
             else:
                 sparse_size += torch.numel(param)

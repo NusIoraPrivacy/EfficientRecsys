@@ -36,7 +36,8 @@ def evaluate(model, train, test, usernum, itemnum, args):
             while t in rated: t = np.random.randint(1, itemnum)
             item_idx.append(t)
 
-        predictions = -model(*[torch.tensor(l, device=args.device) for l in [[u], [seq], item_idx, True]])
+        with torch.no_grad():
+            predictions = -model(*[torch.tensor(l, device=args.device) for l in [[u], [seq], item_idx, True]])
         # print(predictions.shape)
 
         rank = predictions.argsort().argsort()[0].item()
@@ -77,7 +78,7 @@ if __name__ == '__main__':
     total_rounds = args.num_epochs*len(train_loader)
     n_rounds = 0
     patience = args.early_stop
-    item_params = ["item_embeddings.weight"]
+    item_params = ["item_embeddings.weight", "W2.weight", "b2.weight"]
     with tqdm(total=total_rounds) as pbar:
         for epoch in range(args.num_epochs):
             if args.inference_only: break 
