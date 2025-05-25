@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 import math
-from seqrec.models import PointWiseFeedForward
+from SASRec.models import PointWiseFeedForward
 
 class SASRec_CoLR(torch.nn.Module):
     def __init__(self, user_num, item_num, args):

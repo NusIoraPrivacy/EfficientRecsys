@@ -1,6 +1,6 @@
-from seqrec.utils import *
-from seqrec.models import SASRec
-from seqrec.models_colr import SASRec_CoLR
+from SASRec.utils import *
+from SASRec.models import SASRec
+from SASRec.models_colr import SASRec_CoLR
 
 import torch
 from torch.utils.data import DataLoader

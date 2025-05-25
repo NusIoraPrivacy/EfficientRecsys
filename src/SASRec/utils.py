@@ -13,30 +13,40 @@ def get_args():
     # python
     parser = argparse.ArgumentParser()
     parser.add_argument("--root_path", type=str, default=root_path)
-    parser.add_argument("--dataset", type=str, default="amazon")
+    parser.add_argument("--dataset", type=str, default="ml-1m")
     parser.add_argument("--maxlen", type=int, default=200)
     parser.add_argument('--batch_size', default=128, type=int)
     parser.add_argument('--lr', default=0.001, type=float)
     parser.add_argument('--hidden_units', default=50, type=int)
     parser.add_argument('--num_blocks', default=2, type=int)
-    parser.add_argument('--num_epochs', default=50, type=int)
+    parser.add_argument('--num_epochs', default=200, type=int)
     parser.add_argument('--num_heads', default=1, type=int)
     parser.add_argument('--dropout_rate', default=0.2, type=float)
     parser.add_argument('--l2_emb', default=0.0, type=float)
-    parser.add_argument('--device', default='cuda:2', type=str)
+    parser.add_argument('--device', default='cuda:1', type=str)
     parser.add_argument('--inference_only', default=False, type=str2bool)
-    parser.add_argument("--early_stop", type=int, default=5, 
+    parser.add_argument("--early_stop", type=int, default=20, 
                         help = "number of rounds/patience for early stop")
     parser.add_argument("--rank", type=int, default=8)
-    parser.add_argument("--compress", type=str, default="colr", choices=["none", "svd", "ternquant", "8intquant", "colr"])
+    parser.add_argument("--compress", type=str, default="svd", choices=["none", "svd", "ternquant", "8intquant", "colr"])
     args = parser.parse_args()
     return args
 
 def load_data(args):
     # rating_path = f"{args.root_path}/data/{args.dataset}/ratings_Beauty.csv"
-    rating_path = f"{args.root_path}/data/{args.dataset}/item_dedup.csv"
+    if args.dataset == "amazon-beauty":
+        rating_path = f"{args.root_path}/data/amazon/ratings_Beauty.csv"
+        rating_df = pd.read_csv(rating_path, header=None, names=["UserID", "ItemID", "Rating", "TimeStamp"], encoding="iso-8859-1")
+    elif args.dataset == "amazon-sport":
+        rating_path = f"{args.root_path}/data/amazon/ratings_Sports_and_Outdoors.csv"
+        rating_df = pd.read_csv(rating_path, header=None, names=["UserID", "ItemID", "Rating", "TimeStamp"], encoding="iso-8859-1")
+    elif args.dataset == "amazon-game":
+        rating_path = f"{args.root_path}/data/amazon/ratings_Toys_and_Games.csv"
+        rating_df = pd.read_csv(rating_path, header=None, names=["UserID", "ItemID", "Rating", "TimeStamp"], encoding="iso-8859-1")
+    elif args.dataset == "ml-1m":
+        rating_path = f"{args.root_path}/data/{args.dataset}/ratings.dat"
+        rating_df = pd.read_csv(rating_path, delimiter='::', header=None, names=["UserID", "ItemID", "Rating", "TimeStamp"])
     
-    rating_df = pd.read_csv(rating_path, header=None, names=["UserID", "ItemID", "Rating", "TimeStamp"], encoding="iso-8859-1")
     thd = pos_thd[args.dataset]
     rating_df = rating_df[rating_df["Rating"] >= thd]
     # standard id
