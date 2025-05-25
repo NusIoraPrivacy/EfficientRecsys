@@ -28,7 +28,7 @@ def get_args():
     parser.add_argument("--early_stop", type=int, default=5, 
                         help = "number of rounds/patience for early stop")
     parser.add_argument("--rank", type=int, default=8)
-    parser.add_argument("--compress", type=str, default="colr", choices=["none", "svd", "ternquant", "8intquant", "colr"])
+    parser.add_argument("--compress", type=str, default="svd", choices=["none", "svd", "ternquant", "8intquant", "colr"])
     parser.add_argument('--ac_conv', type=str, default='relu')
     parser.add_argument('--ac_fc', type=str, default='relu')
     parser.add_argument('--L', type=int, default=5)
@@ -41,8 +41,8 @@ def get_args():
     return args
 
 def load_data(args):
-    # rating_path = f"{args.root_path}/data/{args.dataset}/ratings_Beauty.csv"
-    rating_path = f"{args.root_path}/data/{args.dataset}/item_dedup.csv"
+    rating_path = f"{args.root_path}/data/{args.dataset}/ratings_Beauty.csv"
+    # rating_path = f"{args.root_path}/data/{args.dataset}/item_dedup.csv"
     
     rating_df = pd.read_csv(rating_path, header=None, names=["UserID", "ItemID", "Rating", "TimeStamp"], encoding="iso-8859-1")
     thd = pos_thd[args.dataset]

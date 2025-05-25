@@ -78,7 +78,7 @@ if __name__ == '__main__':
     total_rounds = args.num_epochs*len(train_loader)
     n_rounds = 0
     patience = args.early_stop
-    item_params = ["item_embeddings.weight", "W2.weight", "b2.weight"]
+    item_params = ["item_embeddings.weight", "W2.weight"]
     with tqdm(total=total_rounds) as pbar:
         for epoch in range(args.num_epochs):
             if args.inference_only: break 
