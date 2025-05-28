@@ -5,7 +5,7 @@ from transformers import (
     default_data_collator,
     get_scheduler
 )
-from lm.utils import ClsDataset, get_args
+from lm.utils import ClsDataset, get_args, global_topk_sparsify
 import torch
 from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import StepLR
@@ -27,11 +27,19 @@ def get_model_tokenizer_cls(model_name, num_labels, args):
         tokenizer.eos_token_id = tokenizer.pad_token_id
     return base_model, tokenizer
 
+def init_agg_grad(model):
+    agg_grad = {}
+    for name, param in model.named_parameters():
+        if param.requires_grad:
+            agg_grad[name] = 0
+    return agg_grad
+
 model_to_emb = {
     "FacebookAI/roberta-large": "base_model.model.roberta.embeddings.word_embeddings.weight",
     "meta-llama/Llama-3.1-8B": "base_model.model.model.embed_tokens.weight",
     "distilbert-base-uncased": "base_model.model.distilbert.embeddings.word_embeddings.weight",
     "Qwen/Qwen2.5-1.5B": "base_model.model.model.embed_tokens.weight",
+    "meta-llama/Llama-3.3-70B-Instruct": "base_model.model.model.embed_tokens.weight",
 }
 
 model_to_target = {
@@ -98,18 +106,34 @@ if __name__ == "__main__":
     
     best_acc = 0
     best_auc = 0
+    sparsities = []
     with tqdm(
         total=len(train_dataloader)*args.epochs, unit='batch'
             ) as pbar:
         for epoch in tqdm(range(args.epochs)):
             losses = []
-            for batch in train_dataloader:
+            agg_grad = init_agg_grad(model)
+
+            for i, batch in enumerate(train_dataloader):
+                optimizer.zero_grad()
                 for key in batch:
                     batch[key] = batch[key].to(args.device)
                 output = model(**batch)
                 loss = output.loss
 
                 loss.backward()
+                total_param = 0
+                zero_param = 0
+                if args.top_k:
+                    model = global_topk_sparsify(model, emb_name, k_ratio=args.k_ratio)
+
+                for name, param in model.named_parameters():
+                    if param.grad is not None:
+                        if name != emb_name:
+                            zero_param += torch.sum(param.grad == 0)
+                            total_param += param.grad.numel()
+                        agg_grad[name] += param.grad
+                sparsities.append(zero_param/total_param)
                 if args.compress == "svd":
                     for name, param in model.named_parameters():
                         if name == emb_name:
@@ -139,12 +163,20 @@ if __name__ == "__main__":
                             param.grad = quant_grad
 
                 losses.append(loss.item())
-                optimizer.step()
-                scheduler.step()
                 optimizer.zero_grad()
+                if (i+1) % args.client_size == 0 or (i+1) == len(train_dataloader):
+                    for name, param in model.named_parameters():
+                        if name in agg_grad.keys():
+                            param.grad = agg_grad[name]/args.client_size
+                            # param.grad = agg_grad[name]
+                            # print(param.grad)
+                    optimizer.step()
+                    scheduler.step()
+                    agg_grad = init_agg_grad(model)
                 pbar.update(1)
                 avg_loss = sum(losses)/len(losses)
-                pbar.set_postfix(loss=avg_loss, best_acc=best_acc, best_auc=best_auc)
+                avg_sparse = (sum(sparsities)/len(sparsities)).item()
+                pbar.set_postfix(loss=avg_loss, best_acc=best_acc, best_auc=best_auc, sparse=avg_sparse)
                 # break
         
             all_labels = []
