@@ -8,25 +8,24 @@ from lm.test_utility import model_to_emb
 # model_name = "meta-llama/Meta-Llama-3-8B"
 # model_name = "distilbert-base-uncased"
 # model_name = "meta-llama/Llama-3.1-8B"
-model_name = "Qwen/Qwen2.5-1.5B"
+# model_name = "Qwen/Qwen2.5-1.5B"
 # model_name = "FacebookAI/roberta-large"
-# model_name = "meta-llama/Llama-3.3-70B-Instruct"
+model_name = "meta-llama/Llama-3.3-70B-Instruct"
 
-model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2, device_map = 'auto') # , device_map = 'auto'
+model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2, torch_dtype=torch.float16, device_map = 'auto') # , device_map = 'auto'
 # print(model)
 peft_config = LoraConfig(
         task_type=TaskType.SEQ_CLS, inference_mode=False, r=8, lora_alpha=32, lora_dropout=0.1,
         # target_modules=["q_lin", "v_lin"]
     )
 model = get_peft_model(model, peft_config)
-# model.model.model.embed_tokens.weight.requires_grad=True
 # print(model)
 
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 tokenizer.pad_token = tokenizer.eos_token
-# for name, param in model.named_parameters():
-#     if "emb" in name:
-#         print(name, param.shape)
+for name, param in model.named_parameters():
+    if "emb" in name:
+        print(name, param.shape)
 emb_name = model_to_emb[model_name]
 
 def get_layer_sizes(model):

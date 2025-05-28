@@ -42,20 +42,23 @@ def get_args():
     # python
     parser = argparse.ArgumentParser()
     parser.add_argument("--root_path", type=str, default=root_path)
-    parser.add_argument("--dataset", type=str, default="cola")
+    parser.add_argument("--dataset", type=str, default="mrpc")
     parser.add_argument("--maxlen", type=int, default=200)
     parser.add_argument('--train_batch_size', default=20, type=int)
     parser.add_argument('--test_batch_size', default=20, type=int)
-    parser.add_argument('--epochs', default=20, type=int)
+    parser.add_argument('--epochs', default=100, type=int)
     parser.add_argument('--lr', default=1e-5, type=float)
     parser.add_argument('--model', default="FacebookAI/roberta-large", type=str)
     parser.add_argument('--dropout_rate', default=0.2, type=float)
     parser.add_argument('--device', default='cuda:0', type=str)
+    parser.add_argument('--top_k', action='store_true')
+    parser.add_argument('--k_ratio', default=0.3, type=float)
+    parser.add_argument('--client_size', default=1, type=int)
     parser.add_argument('--inference_only', default=False, type=str2bool)
     parser.add_argument("--early_stop", type=int, default=20, 
                         help = "number of rounds/patience for early stop")
     parser.add_argument("--rank", type=int, default=8)
-    parser.add_argument("--compress", type=str, default="svd", choices=["none", "svd", "ternquant", "8intquant", "colr"])
+    parser.add_argument("--compress", type=str, default="none", choices=["none", "svd", "ternquant", "8intquant", "colr"])
     args = parser.parse_args()
     return args
 
@@ -110,3 +113,38 @@ class ClsDataset(Dataset):
             "attention_mask":example_masks,
         }
 
+def global_topk_sparsify(model, emb_name, k_ratio=0.01):
+    """
+    Applies global top-k sparsification across all gradients in the model.
+    Only the top-k elements (by absolute value) across all parameters are kept.
+    """
+    grads = []
+    shapes = []
+    for name, param in model.named_parameters():
+        if param.grad is not None and name != emb_name:
+            g = param.grad.detach().view(-1)
+            grads.append(g)
+            shapes.append(param.grad.shape)
+
+    # Flatten all grads into one vector
+    flat_grads = torch.cat(grads)
+    k = int(k_ratio * flat_grads.numel())
+
+    if k == 0:
+        return  model# no gradient will be kept
+
+    # Get top-k indices
+    _, topk_indices = torch.topk(flat_grads.abs(), k, sorted=False)
+
+    # Create sparse vector
+    sparse_grads = torch.zeros_like(flat_grads)
+    sparse_grads[topk_indices] = flat_grads[topk_indices]
+
+    # Reshape and assign back to model parameters
+    pointer = 0
+    for name, param in model.named_parameters():
+        if param.grad is not None and name != emb_name:
+            numel = param.grad.numel()
+            param.grad.copy_(sparse_grads[pointer:pointer+numel].view_as(param.grad))
+            pointer += numel
+    return model

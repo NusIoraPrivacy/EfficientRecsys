@@ -12,11 +12,11 @@ from peft import get_peft_model, LoraConfig, TaskType
 # model_name = "meta-llama/Meta-Llama-3-8B"
 # model_name = "meta-llama/Llama-3.1-8B"
 # model_name = "TinyLlama/TinyLlama-1.1B-Chat-v0.4"
-# model_name = 'distilbert-base-uncased'
+model_name = 'distilbert-base-uncased'
 # model_name = "FacebookAI/roberta-large"
 # model_name = "Qwen/Qwen2.5-1.5B"
-model_name = "meta-llama/Llama-3.3-70B-Instruct"
-data_name = "sst2"
+# model_name = "meta-llama/Llama-3.3-70B-Instruct"
+data_name = "cola"
 keys = task_to_keys[data_name]
 
 # model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2, device_map = 'auto')
@@ -27,7 +27,8 @@ print("Model loaded")
 
 dataset = load_dataset("nyu-mll/glue", data_name, split="train")
 print(f"Data size:", len(dataset))
-batch_size = int(len(dataset)/100)
+batch_size = int(len(dataset)/200)
+batch_size = 30
 print(f"Batch size:", batch_size)
 dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
