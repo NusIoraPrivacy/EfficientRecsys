@@ -18,7 +18,7 @@ def get_model_tokenizer_cls(model_name, num_labels, args):
     try:
         tokenizer = AutoTokenizer.from_pretrained(model_name)
     except:
-        tokenizer = AutoTokenizer.from_pretrained(args.base_model)
+        tokenizer = AutoTokenizer.from_pretrained(args.model)
     if model_name in ('gpt2', 'llama'):
         tokenizer.pad_token = tokenizer.eos_token
     base_model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=num_labels).to(args.device)
