@@ -120,11 +120,10 @@ if __name__ == "__main__":
 
             if accuracy > best_acc:
                 best_acc = accuracy
-                patience -= 1
+                patience = args.early_stop
                 pbar.set_postfix(loss=avg_loss, best_acc=best_acc)
-
+            else:
+                patience -= 1
                 if patience == 0:
                     finish = True
                     break
-            else:
-                patience = args.early_stop
