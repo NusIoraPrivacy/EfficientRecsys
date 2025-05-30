@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchvision import models
 
 
 class BasicBlock(nn.Module):
@@ -160,8 +161,13 @@ class ResNetReduce(nn.Module):
 def ResNet18Reduce(dropout=0.5, num_classes=10):
     return ResNetReduce(BasicBlock, [2, 2, 2, 2], dropout=dropout, num_classes=num_classes)
 
+# def ResNet18(dropout=0.5, num_classes=10):
+#     return ResNet(BasicBlock, [2, 2, 2, 2], dropout=dropout, num_classes=num_classes)
+
 def ResNet18(dropout=0.5, num_classes=10):
-    return ResNet(BasicBlock, [2, 2, 2, 2], dropout=dropout, num_classes=num_classes)
+    model = models.resnet18(pretrained=True)
+    model.fc = nn.Linear(model.fc.in_features, num_classes)
+    return model
 
 class MLP(nn.Module):
     def __init__(self, n_hidden_nodes, n_hidden_layers, activation, keep_rate=0):

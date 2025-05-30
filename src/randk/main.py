@@ -72,8 +72,10 @@ if __name__ == "__main__":
             losses = []
             agg_grad = init_agg_grad(model)
             for i, (inputs, targets) in enumerate(train_dataloader):
+                # print(inputs.shape)
+                # print(targets)
                 inputs, targets = inputs.to(args.device), targets.to(args.device)
-                print(inputs)
+                
                 optimizer.zero_grad()
                 outputs = model(inputs)
                 loss = loss_function(outputs, targets)

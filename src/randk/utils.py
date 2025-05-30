@@ -169,22 +169,38 @@ def get_data(data_name, args):
     
     elif data_name == "miniimagenet":
         training_data = load_dataset("timm/mini-imagenet", split="train")
+        # subset_indices = [i for i in range(100)]
+        # training_data = training_data.select(subset_indices)
         test_data = load_dataset("timm/mini-imagenet", split="test")
+        # test_data = test_data.select(subset_indices)
                 # Define transformations
         transform = transforms.Compose([
             transforms.Resize(256),
             transforms.CenterCrop(224),
+            transforms.Lambda(lambda img: img.convert('RGB') if img.mode != 'RGB' else img),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                 std=[0.229, 0.224, 0.225])
         ])
 
-        # Apply transformations and create DataLoaders
-        def transform_examples(example):
-            example['image'] = transform(example['image'])
-            return example
-        training_data = training_data.map(transform_examples)
-        test_data = test_data.map(transform_examples)
+        class CustomDataset(torch.utils.data.Dataset):
+            def __init__(self, dataset, transform=None):
+                self.dataset = dataset
+                self.transform = transform
+
+            def __len__(self):
+                return len(self.dataset)
+
+            def __getitem__(self, idx):
+                image = self.dataset[idx]['image']
+                label = self.dataset[idx]['label']
+                if self.transform:
+                    image = self.transform(image)
+                return image, label
+
+        training_data = CustomDataset(training_data, transform=transform)
+        test_data = CustomDataset(test_data, transform=transform)
+
         return training_data, test_data
 
 def load_model(args):
