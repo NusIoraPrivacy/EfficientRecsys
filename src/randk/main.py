@@ -57,6 +57,7 @@ if __name__ == "__main__":
 
     # Example usage with ResNet-18
     model = load_model(args)
+    # print(model)
 
     # Apply sparsification after each optimizer step during training
     loss_function = nn.CrossEntropyLoss()
@@ -72,6 +73,7 @@ if __name__ == "__main__":
             agg_grad = init_agg_grad(model)
             for i, (inputs, targets) in enumerate(train_dataloader):
                 inputs, targets = inputs.to(args.device), targets.to(args.device)
+                print(inputs)
                 optimizer.zero_grad()
                 outputs = model(inputs)
                 loss = loss_function(outputs, targets)

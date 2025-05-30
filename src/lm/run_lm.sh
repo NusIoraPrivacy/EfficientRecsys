@@ -1,7 +1,7 @@
 #!/bin/bash
 compresses=(none ternquant 8intquant colr svd)
 rounds=(1 2 3)
-k_ratios=(0.2 0.25 0.3)
+k_ratios=(0.1 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5)
 
 # for rnd in ${rounds[@]}
 # do
@@ -17,3 +17,6 @@ do
     echo "Train base model: Roberta, k ratio: $k"
     python3 -m lm.test_utility --dataset mrpc --device cuda:0 --client_size 20 --top_k --k_ratio $k
 done
+
+echo "Train full model: Roberta"
+python3 -m lm.test_utility --dataset mrpc --device cuda:0 --client_size 20

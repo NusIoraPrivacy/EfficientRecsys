@@ -4,6 +4,7 @@ import os
 from torchvision import transforms, datasets, models
 import torch.nn as nn
 from randk.models import ResNet18, ResNet18Reduce
+from datasets import load_dataset
 
 current = os.path.dirname(os.path.realpath(__file__))
 root_path = os.path.dirname(os.path.dirname(current))
@@ -38,7 +39,7 @@ def get_args():
     parser.add_argument('--epochs', default=200, type=int)
     parser.add_argument('--lr', default=0.01, type=float)
     parser.add_argument('--model', default=["ResNet18", "ResNet18Reduce"][0], type=str)
-    parser.add_argument('--device', default='cuda:2', type=str)
+    parser.add_argument('--device', default='cuda:1', type=str)
     parser.add_argument('--client_size', default=100, type=int)
     parser.add_argument('--k_ratio', default=0.3, type=float)
     parser.add_argument('--dropout', default=0, type=float)
@@ -165,9 +166,29 @@ def get_data(data_name, args):
         training_data = datasets.CIFAR100(root=f"{args.root_path}/data", train=True, download=True, transform=transform_train)
         test_data = datasets.CIFAR100(root=f"{args.root_path}/data", train=False, download=True, transform=transform_test)
         return training_data, test_data
+    
+    elif data_name == "miniimagenet":
+        training_data = load_dataset("timm/mini-imagenet", split="train")
+        test_data = load_dataset("timm/mini-imagenet", split="test")
+                # Define transformations
+        transform = transforms.Compose([
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                std=[0.229, 0.224, 0.225])
+        ])
+
+        # Apply transformations and create DataLoaders
+        def transform_examples(example):
+            example['image'] = transform(example['image'])
+            return example
+        training_data = training_data.map(transform_examples)
+        test_data = test_data.map(transform_examples)
+        return training_data, test_data
 
 def load_model(args):
-    if args.dataset == "cifar100":
+    if args.dataset in ("cifar100", "miniimagenet"):
         num_classes = 100
     else:
         num_classes = 10
